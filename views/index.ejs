@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script>
+      function LoginKakao(){
+        window.location.href = '/api/users/kakao'
+      }
+      function LoginGoogle(){
+        window.location.href = '/api/users/google'
+      }
+    </script>
+  </head>
+  <body>
+    <h1><%= title %></h1>
+    <p>Welcome to <%= title %></p>
+    <button onclick="LoginKakao()">카카오 로그인</button>
+    <button onclick="LoginGoogle()">구글 로그인</button>
+  </body>
+</html>

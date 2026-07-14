@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        function goMainContent(){
+            window.location.href="/api/community";
+        }
+    </script>
+</head>
+<body>
+    <form action="/api/community/update/<%= data.post_id %>" method="post">
+        <label for="title">제목</label>
+        <input type="text" id="title" name="title" value="<%= data.title %>">
+        <label for="nickname">작성자</label>
+        <input type="text" id="nickname" value="<%= data.User.nickname %>" readonly>
+        <label for="fishType">물고기 종류</label>
+        <select name="fish_type" id="fishType">
+            <option value="금붕어" <%= data.fish_type === '금붕어' ? 'selected' : '' %>>금붕어</option>
+            <option value="구피" <%= data.fish_type === '구피' ? 'selected' : '' %>>구피</option>
+            <option value="네온테트라" <%= data.fish_type === '네온테트라' ? 'selected' : '' %>>네온테트라</option>
+        </select>
+        <label for="content">내용</label>
+        <textarea name="content" id="content" cols="30" rows="10">
+            <%= data.content %>
+        </textarea>
+        <button>작성 완료하기</button>
+    </form>
+    <button onclick="goMainContent()">뒤로 이동하기</button>
+</body>
+</html>

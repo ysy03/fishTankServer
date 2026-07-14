@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        function goNewContent(){
+            window.location.href='/api/community/posts'
+        }
+        function goHome(){
+            window.location.href = '/api/index';
+        }
+    </script>
+</head>
+<body>
+    <button onclick="goHome()">집으로 가기</button>
+    <button onclick="goNewContent()">추가하기</button>
+    <div>
+        <a href="/api/community">전체 페이지로 이동하기</a>
+        <form action="/api/community/mypost">
+            <h4>제목 찾기</h4>
+            <input type="text">
+            <button>입력</button>
+            <h4>물고기 종류</h4>
+                <label>
+                    <input type="checkbox" name="fish_type" value="구피" <%= selectedFishTypes.includes('구피') ? 'checked' : '' %>>
+                    구피
+                </label>
+                <label>
+                    <input type="checkbox" name="fish_type" value="금붕어" <%= selectedFishTypes.includes('금붕어') ? 'checked' : '' %>>
+                    금붕어
+                </label>
+                <label>
+                    <input type="checkbox" name="fish_type" value="네온테트라" <%= selectedFishTypes.includes('네온테트라') ? 'checked' : '' %>>
+                    네온테트라
+                </label>
+            <button type="submit">검색</button>
+        </form>
+        <% if (datas && datas.length > 0) { %>
+            <% datas.forEach(data => { %>
+             <div>
+                <h3><a href="/api/community/posts/<%= data.post_id %>"><%=data.title  %></a></h3>
+                <p><%= data.fish_type  %></p>
+                <p><%= data.User.nickname %></p>
+             </div>
+            <% }) %>
+        <% } else { %>
+            <p>작성된 내용이 없습니다.</p>
+        <% } %> 
+    </div>
+</body>
+</html>

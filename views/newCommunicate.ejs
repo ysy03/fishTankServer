@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        function goMainContent(){
+            window.location.href="/api/community";
+        }
+    </script>
+</head>
+<body>
+    <h1>새로 작성하기</h1>
+    <form action="/api/community/posts" method="post">
+        <label for="title">제목</label>
+        <input type="text" id="title" name="title">
+        <label for="nickname">작성자</label>
+        <input type="text" id="nickname" value="<%= nickname %>" readonly>
+        <label for="fishType">물고기 종류</label>
+        <select name="fish_type" id="fishType">
+            <option value="금붕어">금붕어</option>
+            <option value="구피">구피</option>
+            <option value="네온테트라">네온테트라</option>
+        </select>
+        <label for="content">내용</label>
+        <textarea name="content" id="content" cols="30" rows="10" placeholder="내용을 입력해주세요"></textarea>
+        <button>작성 완료하기</button>
+    </form>
+    <button onclick="goMainContent()">뒤로 이동하기</button>
+</body>
+</html>

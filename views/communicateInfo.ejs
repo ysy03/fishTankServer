@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .change{
+            display: none;
+        }
+        .change.show{
+            display: block;
+        }
+    </style>
+    <script>
+        function goCommunicate(){
+            window.location.href = '/api/community'
+        }
+        function goUpdateCommunity(id){
+            window.location.href = `/api/community/update/${id}`;
+        }
+        async function destroyCommunicate(id){
+            let url = '/api/community/posts/'+id;
+            const response = await fetch(url,{
+                method:'DELETE'
+            })
+            if (!response.ok) {
+                const data = await response.json();
+                alert(data.message);
+            }
+            window.location.href = "/api/community";
+        }
+
+        async function commentLike({post_id,comment_id}) {
+            
+            const url = '/api/community/commentLike/'+comment_id;
+            console.log(url);
+            await fetch(url,{
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json'
+                },
+                body:JSON.stringify({
+                    post_id
+                })
+            })
+        }
+        function toggle(button){
+            const form = button.parentElement.querySelector(".change");
+            form.classList.toggle('show');
+        }
+    </script>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>제목</th>
+            <td><%=data.title  %></td>
+        </tr>
+        <tr>
+            <th>사용자</th>
+            <td><%=data.User.nickname  %></td>
+        </tr>
+        <tr>
+            <th>물고기 종류</th>
+            <td><%= data.fish_type %></td>
+        </tr>
+    </table>
+    <%= data.content %>
+    <br>
+    <% if (mine) { %>
+     <button onclick="goUpdateCommunity('<%=data.post_id %>')">수정하기</button>
+     <button onclick="destroyCommunicate('<%=data.post_id %>')">제거하기</button>
+    <% } %>
+    <button onclick="goCommunicate()">돌아가기</button>
+    <form action="/api/community/comment" method="post">
+        <input type="hidden" name="post_id" value="<%= data.post_id %>">
+        <textarea name="content" id="content" placeholder="답변을 작성해주세요"></textarea>
+        <button>답변 제공</button>
+    </form>
+    <% commentDatas.forEach(commentData => { %>
+        <div>
+            <hr>
+            <p><%= commentData.content %></p>
+            <p>작성자:<%= commentData.User.nickname %></p>
+            <%if (!commentData.is_deleted) { %>
+                <% if (user_id===commentData.user_id) { %>
+                <div>
+                    <button onclick="toggle(this)">변경</button>
+                    <form action="/api/community/deletecomment/<%=commentData.comment_id%>" method="post">
+                        <button>삭제</button>
+                    </form>
+                    <form action="/api/community/comment/<%=commentData.comment_id %>" method="post" class="change">
+                        <textarea name="content">
+                            <%=commentData.content %>
+                        </textarea>
+                        <button>변경하기</button>
+                    </form>
+                    <% } %>
+                    <div>
+                        <button onclick="commentLike({post_id:'<%=data.post_id %>',comment_id:'<%=commentData.comment_id %>'})">좋아요<%=commentData.get('likeCount')  %></button>
+                        <button onclick="toggle(this)">답글</button>
+                        <form action="/api/community/comment" method="post" class="change">
+                            <input type="hidden" name="post_id" value="<%=commentData.post_id%>">
+                            <input type="hidden" name="commentId" value="<%=commentData.comment_id%>">
+                            <textarea name="content" placeholder="답글 달기">
+
+                            </textarea>
+                            <button>답글달기</button>
+                        </form>
+                        <div>
+                            <% replyData.filter(reply=>reply.parent_id === commentData.comment_id).forEach(reply => { %>
+                                <p><%=reply.content%></p>
+                                <p><%=reply.User.nickname%></p>
+                                <button onclick="commentLike({post_id:'<%=reply.post_id %>',comment_id:'<%=reply.comment_id %>'})">좋아요<%=reply.get('likeCount')  %></button>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>    
+            <%}%>
+            
+        </div>
+    <% }) %>
+</body>
+</html>

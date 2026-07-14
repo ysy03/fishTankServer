@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        async function deleteFishInfo(fishId){
+            const response = await fetch(`/api/fishinfo/${fishId}`,{
+                method:'DELETE'
+            })
+            if(response.ok){
+                location.reload();
+            }
+        }
+        function plusFishInfo(){
+            const fishInfos = document.getElementById('fishInfos');
+            const createSection = document.createElement('div');
+            createSection.innerHTML = `
+                <form action="/api/fishinfo/new" method = "post">
+                    <input type="text" name="fish_type" />
+                    <input type="number" name="fish_count" />
+                    <button>추가하기</button>
+                    <button type="button" class="cancelBtn">취소하기</button>
+                <form>
+            `
+            fishInfos.appendChild(createSection);
+
+            createSection.querySelector(".cancelBtn").addEventListener('click',()=>{
+                createSection.remove();
+            })
+        }
+        function goHome(){
+            window.location.href = '/api/index';
+        }
+    </script>
+</head>
+<body>
+    <p><%= nickname %>님,물고기 정보</p>
+    <div id="fishInfos">
+        <% fishinfos.forEach(fishinfo => { %>
+            <div>
+                <form action="/api/fishinfo/<%= fishinfo.fish_id  %>" method="post">
+                    <input type="text" name="fish_type" value="<%= fishinfo.fish_type %>">
+                    <input type="number" name="fish_count" value="<%= fishinfo.fish_count  %>">
+                    <button type="submit">변경하기</button>
+                    <button type="button" onclick="deleteFishInfo('<%= fishinfo.fish_id  %>')">제거하기</button>
+                </form>
+            </div>
+        <% }) %>
+    </div>
+    <button onclick="plusFishInfo()">추가하기</button>
+    <br>
+    <button onclick="goHome()">집으로가기</button>
+</body>
+</html>
