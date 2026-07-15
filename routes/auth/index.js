@@ -16,15 +16,6 @@ router.get('/',async(req,res)=>{
             </script>`
         )
     }
-    const data = await User.findOne({
-        include:[{
-            model:Fishinfo,
-            where:{
-                user_id:2
-            }
-        }]
-    });
-    console.log(data.Fishinfos);
     res.render('index',{title:'hello'});
 })
 

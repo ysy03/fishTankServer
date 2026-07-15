@@ -6,6 +6,7 @@ var logger = require('morgan');
 require('dotenv').config()
 const {sequelize} = require('./models');
 var indexRouter = require('./routes/index');
+const startSensorSimulation = require('./Iot/sensorSimulation');
 
 
 var app = express();
@@ -17,6 +18,8 @@ sequelize.sync({force:false})
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
+
+startSensorSimulation()
 
 app.use(logger('dev'));
 app.use(express.json());

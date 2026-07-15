@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        async function getTemWaterQuality(){
+            const {data} = await axios.get('/api/tank/lasts');
+            const {last,Temstatus} = data
+            document.getElementById('min').innerText = `${Temstatus.Mintemperature}도`;
+            document.getElementById('max').innerText = `${Temstatus.Maxtemperature}도`
+            document.getElementById('temperature').innerText = `${last.temperature}도`;
+            document.getElementById('waterquality').innerText = last.water_quality > 255 ? '더러움' : '깨끗함';
+            console.log(data);   
+        }
+        async function feed(){
+            const {data}  = await axios.post('/api/tank/feed');
+            alert(data);
+        }
+        getTemWaterQuality();
+        setInterval(getTemWaterQuality,5000);
+    </script>
+</head>
+<body>
+    <h1>탱크 화면입니다.</h1>
+    <div>
+        실시간 물고기 상태
+    </div>
+    <div>
+        <p>최저온도:<span id="min"></span></p>
+        <p>최고온도:<span id="max"></span></p>
+        <p>수온:<span id="temperature"></span></p>
+        <p>수질:<span id="waterquality"></span></p>
+        <button onclick="feed()">먹이주기</button>
+        <% if (FeedData.length > 0) { %>
+            <% FeedData.forEach(element => { %>
+                <p><%= element.feed_time %>  <span><%= element.status ? 'O' : 'X' %></span></p>
+            <% }) %>
+        <% } else { %>
+            <p>먹이 준적이 없습니다.</p>
+        <% } %>
+        <p>환수하기</p><p>YES</p>
+    </div>
+</body>
+</html>

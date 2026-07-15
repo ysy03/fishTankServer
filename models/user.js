@@ -9,6 +9,7 @@ module.exports = (sequelize,DataTypes) =>{
             db.User.hasMany(db.Post,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.Comment,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.CommentLike,{foreignKey:'user_id',sourceKey:'user_id'});
+            db.User.hasMany(db.Sensor,{foreignKey:'user_id',sourceKey:'user_id'})
         }
     }
 
