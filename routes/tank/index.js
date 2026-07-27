@@ -6,6 +6,10 @@ const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
 
 
+router.post('/sensor',async(req,res)=>{
+    
+})
+
 router.get('/log',devAuthMiddleware,async(req,res)=>{
     try {
         const today =new Date();
@@ -113,7 +117,7 @@ router.post('/waterchange',devAuthMiddleware,async(req,res)=>{
             device_id:'SS501',
             status,
             started_at: StartDate,
-            end_at:new Date()
+            ended_at:new Date()
         })
         return res.json(date);   
     } catch (error) {

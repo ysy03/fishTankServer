@@ -35,7 +35,7 @@ module.exports = (sequelize,DataTypes) =>{
     },{
         sequelize,
         modelName:'Daily',
-        tableName:'Daily',
+        tableName:'daily',
         timestamps:false
     })
     return Daily
