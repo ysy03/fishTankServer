@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         function goNewContent(){
             window.location.href='/api/community/posts'
@@ -18,36 +19,73 @@
     <button onclick="goNewContent()">추가하기</button>
     <div>
         <a href="/api/community">전체 페이지로 이동하기</a>
-        <form action="/api/community/mypost">
+        <form id="searchForm">
             <h4>제목 찾기</h4>
-            <input type="text">
+            <input type="text" id="keyword" name="keyword" placeholder="제목을 입력해 주세요">
             <button>입력</button>
             <h4>물고기 종류</h4>
                 <label>
-                    <input type="checkbox" name="fish_type" value="구피" <%= selectedFishTypes.includes('구피') ? 'checked' : '' %>>
+                    <input type="checkbox" name="fish_type" value="구피">
                     구피
                 </label>
                 <label>
-                    <input type="checkbox" name="fish_type" value="금붕어" <%= selectedFishTypes.includes('금붕어') ? 'checked' : '' %>>
+                    <input type="checkbox" name="fish_type" value="금붕어">
                     금붕어
                 </label>
                 <label>
-                    <input type="checkbox" name="fish_type" value="네온테트라" <%= selectedFishTypes.includes('네온테트라') ? 'checked' : '' %>>
+                    <input type="checkbox" name="fish_type" value="네온테트라">
                     네온테트라
                 </label>
             <button type="submit">검색</button>
         </form>
-        <% if (datas && datas.length > 0) { %>
-            <% datas.forEach(data => { %>
-             <div>
-                <h3><a href="/api/community/posts/<%= data.post_id %>"><%=data.title  %></a></h3>
-                <p><%= data.fish_type  %></p>
-                <p><%= data.User.nickname %></p>
-             </div>
-            <% }) %>
-        <% } else { %>
-            <p>작성된 내용이 없습니다.</p>
-        <% } %> 
+        <div id="BoardList"></div>
     </div>
+    <script>
+        const BoardList = document.getElementById('BoardList');
+        const searchForm = document.getElementById('searchForm');
+        async function getPost() {
+            try {
+                const params = new URLSearchParams();
+                const keyword = document.getElementById('keyword').value.trim();
+                if(keyword){
+                    params.append('keyword',keyword);
+                }
+                document.querySelectorAll('input[name="fish_type"]:checked')
+                .forEach(input=>{
+                    params.append('fish_type',input.value)
+                })
+                const response = await axios.get('/api/community/mypost/data',{
+                    params
+                })
+                renderData(response.data.datas);
+            } catch (error) {
+                console.error(error);
+                BoardList.innerHTML = `
+                    <p>게시글을 불러오지 못했습니다.</p>
+                ` 
+            }
+        }
+        async function renderData(datas) {
+                if(datas.length == 0){
+                    BoardList.innerHTML = `
+                        <p>게시물이 없습니다.</p>
+                    `
+                    return
+                }
+                BoardList.innerHTML = datas.map(data=>{
+                    return `<div class="post">
+                    <a href="/api/community/posts/${data.post_id}"><h3>${data.title}</h3></a>
+                    <p>${data.fish_type}</p>
+                    <p>${data.User.nickname}</p>
+                </div>`
+                }).join('')
+            }
+        searchForm.addEventListener('submit',(event)=>{
+            console.log('작동');
+            event.preventDefault();
+            getPost();
+        })
+        getPost();
+    </script>
 </body>
 </html>

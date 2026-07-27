@@ -13,7 +13,7 @@ function SensorSimulation(){
         temperature = Number(temperature.toFixed(1))
         await Sensor.create({
             device_id:'SS501',
-            user_id:'4',
+            user_id:'3',
             temperature,
             water_quality:Math.floor(water_quality + Math.random()*20)
         })

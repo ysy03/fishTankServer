@@ -6,6 +6,7 @@ module.exports = (sequelize,DataTypes) =>{
         static associate(db){
             db.Post.belongsTo(db.User,{foreignKey:'user_id',targetKey:'user_id'});
             db.Post.hasMany(db.Comment,{foreignKey:'post_id',sourceKey:'post_id',onDelete: 'CASCADE'});
+            db.Post.hasMany(db.Image,{foreignKey:'post_id',sourceKey:'post_id'});
         }
     }
 

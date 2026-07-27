@@ -2,23 +2,36 @@ const app = require('express');
 const router = app.Router();
 const authMiddleware = require('../auth/authMiddleware');
 const {User,Fishinfo} = require('../../models');
+const devAuthMiddleware = require('../auth/devauthMiddleware');
 
-router.get('/',authMiddleware,async(req,res)=>{
+router.get('/',devAuthMiddleware,async(req,res)=>{
     try {
-        const {user_id,nickname} = req.user;
+        const {user_id} = req.user;
         const data = await User.findOne({where:{user_id},include:[{model:Fishinfo}]});
         const fishInfo = data.Fishinfos;
-        return res.render('Fishinfo',{nickname,fishinfos:fishInfo});   
+        return res.status(200).json(data);
     } catch (error) {
-        console.error(error);
-        return res.redirect('/api/users')
+        return res.status(404).json({message:'데이터를 불러들이지 못했습니다.'}) 
     }
 })
 
-router.post('/new',authMiddleware,async(req,res)=>{
+router.get('/data',devAuthMiddleware,async(req,res)=>{
     try {
         const {user_id} = req.user;
-        const {fish_count,fish_type} = req.body;
+        const data = await User.findOne({where:{user_id},include:[{model:Fishinfo}]});
+        const fishInfo = data.Fishinfos;
+        return res.json({fishInfo,nickname})
+    } catch (error) {
+        res.json({message:'데이터를 불러오는 과정에서 실패하였습니다.'})
+    }
+})
+
+
+router.post('/new',devAuthMiddleware,async(req,res)=>{
+    try {
+        const {user_id} = req.user;
+        const {fish_count,fish_type} = req.body.newFish;
+        console.log(req.body);
         const Data = await Fishinfo.findAll({
             where:{
                 user_id:user_id,
@@ -26,7 +39,9 @@ router.post('/new',authMiddleware,async(req,res)=>{
             }
         });
         if(Data.length > 0){
-            return res.render('Nopage',{message:'입력이 잘 못 되었습니다.'})
+            const error = new Error('이미 등록한 물고기 종류 입니다.');
+            error.status(409);
+            throw error;
         }
         else{
             await Fishinfo.create({
@@ -35,45 +50,49 @@ router.post('/new',authMiddleware,async(req,res)=>{
                 fish_count
             })
         }
-        return res.redirect("/api/fishinfo");
+        return res.status(200).send();
     } catch (error) {
-        console.log(error);
-        return res.send(`
-            <script>
-                const error = alert('에러가 발생하였습니다.')
-                window.location.href = '/api/index';
-            </script>
-            `)
+        return res.status(error.status||500).json({
+            message: error.message || '서버에 장애가 발생하였습니다.'
+        })
     }
 })
 
-router.post('/:id',authMiddleware,async (req,res) => {
+router.post('/:id',devAuthMiddleware,async (req,res) => {
     try {
         const {id} = req.params;
         const {fish_type,fish_count} = req.body;
         const result = await Fishinfo.update({fish_type,fish_count},{where:{user_id:req.user.user_id,fish_id:id}});
-        console.log('성공');
-        res.redirect('/api/fishinfo');   
+        return res.status(200).send();   
     } catch (error) {
-        res.send(`
-            <script>
-                let error = alert("오류가 발생하였습니다.")
-                if(error){
-                    history.go(-1);
-                }
-            </script>
-            `)
+        return res.status(error.status||500).json({
+            message:error.message||'서버에 문제가 발생하였습니다.'
+        })
     }
 })
 
-router.delete('/:id',authMiddleware,async (req,res) => {
+router.delete('/:id',devAuthMiddleware,async (req,res) => {
+    try {
     const Fishid = req.params.id;
-    await Fishinfo.destroy({
-        where:{
-            fish_id:Fishid
-        }
-    })
-    res.sendStatus(200);
+    const {user_id} = req.user;
+    const fishinfo = await fishInfo.findOne({where:{fish_id:Fishid}});
+    if(!fishinfo){
+        const error = new Error('서버에 오류가 발생하였습니다.');
+        error.status = 404;
+        throw error;
+    }
+    if(fishinfo.user_id !== user_id){
+        const error = new Error('데이터를 변경할 권한이 없습니다.');
+        error.status = 403;
+        throw error;
+    }
+    await fishInfo.destroy({where:{fish_id:Fishid}});
+    return res.status(204).send();
+    } catch (error) {
+        return res.status(error.status || 500).json({
+            message:error.message || '서버에 문제가 발생하였습니다.'
+        })
+    }
 })
 
 module.exports = router;

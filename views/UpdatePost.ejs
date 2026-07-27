@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         function goMainContent(){
             window.location.href="/api/community";
@@ -29,5 +30,23 @@
         <button>작성 완료하기</button>
     </form>
     <button onclick="goMainContent()">뒤로 이동하기</button>
+    <script>
+        const id = window.location.pathname.split("/").pop();
+        async function getData(){
+            try {
+                const response = await axios.get(`/update/${id}/data`);
+                const Data = response.data;
+                document.getElementById('title').value = Data.title;
+                document.getElementById('nickname').value = Data.User.nicknmae;
+                document.getElementById('fishType').value = Data.fish_type;
+                document.getElementById('content').value = Data.content;   
+            } catch (error) {
+                alert(`${error.response.data.message}`)
+                window.location.href = `/api/community/posts/${id}`;
+            }
+
+        }
+        getData();
+    </script>
 </body>
 </html>

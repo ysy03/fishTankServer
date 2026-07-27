@@ -7,7 +7,9 @@ require('dotenv').config()
 const {sequelize} = require('./models');
 var indexRouter = require('./routes/index');
 const startSensorSimulation = require('./Iot/sensorSimulation');
-
+const cors = require('cors');
+const multer = require('multer');
+const fs = require('fs');
 
 var app = express();
 
@@ -15,6 +17,11 @@ sequelize.sync({force:false})
     .then(()=>console.log('연결성공'))
     .catch((err)=>console.error(err));
 
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}));
+  
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -26,7 +33,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.use('/uploads/user',express.static(path.join(__dirname,'./uploads/user')));
+app.use('/uploads/post',express.static(path.join(__dirname,'./uploads/post')));
 app.use('/api', indexRouter);
 
 // catch 404 and forward to error handler

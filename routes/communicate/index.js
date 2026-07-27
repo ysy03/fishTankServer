@@ -1,82 +1,103 @@
 const app = require('express');
 const router = app.Router();
-const {User,Post,Comment,CommentLike, sequelize} = require('../../models');
+const {User,Post,Comment,CommentLike,Image} = require('../../models');
 const authMiddleware = require('../auth/authMiddleware');
-const { Op } = require('sequelize');
-
+const { Op,fn,col } = require('sequelize');
+const devAuthMiddleware = require('../auth/devauthMiddleware');
+const upload = require('../uploaded/profileupload');
+const fs = require('fs');
+const path = require('path');
 //커뮤니티 리스트 관련
 router.get('/',async(req,res)=>{
-    const {fish_type,keyword} = req.query;
-    let where = {};
-    const selectedFishTypes = fish_type ? 
-                            Array.isArray(fish_type) ? 
-                            fish_type :
-                            [fish_type] 
-                            : 
-                            [];
-    
-    if(keyword){
-        where.title = {
-            [Op.like] : `%${keyword}%`
-        };
-    }
-
-    if (selectedFishTypes.length > 0){
-        where.fish_type={
-            [Op.in]: selectedFishTypes
-        }
-    }
-    let datas = await Post.findAll({
-        where,
-        attributes:['post_id','title','fish_type'],
-        include:{model:User,attributes:['nickname']}
-    });
-    console.log(fish_type);
-    res.render('communicationList',{datas,selectedFishTypes,keyword});
+    res.render('communicationList');
 })
 
-router.get('/mypost',authMiddleware,async(req,res)=>{
+router.get('/list',async (req,res) => {
     try {
-        const {fish_type} = req.query;
-        const {user_id} = req.user;
-        let where = {}
-        const selectedFishTypes = fish_type ? 
-                            Array.isArray(fish_type) ? 
-                            fish_type :
-                            [fish_type] 
-                            : 
-                            [];
-        if (selectedFishTypes.length > 0){
-            where.fish_type={
+        const {fish_type,keyword} = req.query;
+        let where = {};
+        const selectedFishTypes = fish_type ?
+                                Array.isArray(fish_type) ?
+                                fish_type : [fish_type]
+                                : [];
+        if(keyword){
+            where.title = {
+                [Op.like]: `${keyword}`
+            };
+        }
+        if(selectedFishTypes.length > 0){
+            where.fish_type = {
                 [Op.in]: selectedFishTypes
             }
         }
-        where.user_id = user_id;
+
+        let datas = await Post.findAll({
+            where,
+            attributes:['post_id','title','fish_type'],
+            include:{model:User,attributes:['nickname']}
+        });
+
+        console.log(where);
+        res.json({selectedFishTypes,datas,keyword});
+    } catch (error) {
+        return res.json({message:'게시글을 불러오지 못했습니다.'})
+    }
+})
+
+router.get('/mypost',async(req,res)=>{
+    try {
+        res.render('myCommunity');
+    } catch (error) {
+        console.log(error);   
+    }
+})
+
+
+router.get('/mypost/data',async(req,res)=>{
+    const {fish_type,keyword} = req.query;
+    const {user_id} = req.user;
+    console.log(req.user);
+    let where = {}
+    const selectedFishTypes = fish_type ? 
+                            Array.isArray(fish_type) ? 
+                            fish_type : [fish_type] :
+                            [];
+
+    if(keyword){
+        where.title ={
+            [Op.like] : `%${keyword}%`
+        }
+    }
+    if(selectedFishTypes.length > 0){
+        where.fish_type={
+            [Op.in] : selectedFishTypes
+        }
+    }
+    try {
+        where.user_id = req.user.user_id;
         const datas = await Post.findAll({
             where,
             attributes:['post_id','title','fish_type'],
             include:{model:User,attributes:['nickname']}
         })
-        return res.render('myCommunity',{datas,selectedFishTypes});
+        console.log(fish_type);
+        return res.json({datas,selectedFishTypes,keyword});
     } catch (error) {
-        return res.send(`
-            <script>
-                alert("오류가 발생하였습니다.")
-                window.location.href = "/api/community"
-            </script>
-            `)
+        console.log(error);
+        res.json({message:'게시글을 불러오지 못하였습니다.'})
     }
+    
 })
 
 
 //게시글 작성 관련
-router.get('/posts',authMiddleware,async(req,res)=>{
+router.get('/posts',async(req,res)=>{
     const nickname = req.user.nickname;
     res.render('newCommunicate',{nickname});
 
 })
 
-router.post('/posts',authMiddleware,async (req,res) => {
+router.post('/posts',devAuthMiddleware,upload.array('images',4),async (req,res) => {
     try {
         const {title,fish_type,content} = req.body;
         const id = req.user.user_id;
@@ -86,36 +107,53 @@ router.post('/posts',authMiddleware,async (req,res) => {
             fish_type,
             content
         })
-        res.redirect('/api/community');   
+        const files = req.files ?? [];
+        console.log(files);
+        if(files.length > 0){
+            await Image.bulkCreate(
+                files.map((prev)=>({
+                    post_id:data.post_id,
+                    Image_url:`/uploads/post/${prev.filename}`
+                }))
+            )
+        }
+
+        return res.status(200).json(data);   
     } catch (error) {
-        
+        console.log(error);
+        res.status(error.status||500).json({message:error.message||'에러가 발생하였습니다.'})
     }
 })
 
 //개인 게시글 정보
-router.get('/posts/:id',authMiddleware,async(req,res)=>{
+
+router.get('/posts/:id',devAuthMiddleware,async (req,res) => {
     try {
         const {id} = req.params;
         const {user_id} = req.user;
-        const data = await Post.findOne({where:{post_id:id},
+        const Postdata = await Post.findOne({
+            where:{
+                post_id:id
+            },
             include:[
                 {model:User,attributes:['user_id','nickname']}
-            ]});
+            ]
+        })
         const commentDatas = await Comment.findAll({
             where:{post_id:id,parent_id:null},
             attributes:{
                 include:[
                     [
-                        sequelize.fn(
+                        fn(
                             'COUNT',
-                            sequelize.col('CommentLikes.commentlike_id')
+                            col('CommentLikes.commentlike_id')
                             ),
                             'likeCount'
                     ]
                 ]
             },
             include:[
-                {model:User,attributes:['nickname']},
+                {model:User,attributes:['user_id','nickname']},
                 {model:CommentLike,attributes:[]},
             ],
             group:[
@@ -133,16 +171,16 @@ router.get('/posts/:id',authMiddleware,async(req,res)=>{
             attributes:{
                 include:[
                     [
-                        sequelize.fn(
+                        fn(
                             'COUNT',
-                            sequelize.col('CommentLikes.commentlike_id')
+                            col('CommentLikes.commentlike_id')
                             ),
                             'likeCount'
                     ]
                 ]
             },
             include:[
-                {model:User,attributes:['nickname']},
+                {model:User,attributes:['user_id','nickname']},
                 {model:CommentLike,attributes:[]},
             ],
             group:[
@@ -151,51 +189,106 @@ router.get('/posts/:id',authMiddleware,async(req,res)=>{
             ],
             order:[['created_at','ASC']]
         })
-        const mine = user_id === data.User.user_id;
-        return res.render('communicateInfo',{data,mine,user_id,commentDatas,replyData});
+        const images = await Image.findAll({
+            where:{
+                post_id:id
+            }
+        })
+        const mine = user_id === Postdata.user_id;
+        res.json({mine,replyData,commentDatas,Postdata,images})
     } catch (error) {
-        console.error(error);
-        return res.send(`
-            <script>
-                alert("존재하지 않는 게시글입니다.")
-                window.location.href = "/api/communicate"
-            </script>
-            `)
+        console.log(error);
+        res.json({message:'오류가 발생하였습니다.'})
     }
 })
 
 //게시글 업데이트
-router.get('/update/:id',authMiddleware,async(req,res)=>{
+
+router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
     const {id} = req.params;
     try {
-        const data = await Post.findOne({where:{post_id:id},include:[{model:User}]});
-        if(!data){
-            throw new Error('존재하지 않는 데이터입니다.')
+        const Postdata = await Post.findOne({where:{post_id:id},include:[{model:User}]});
+        if(!Postdata){
+            const err = new Error('존재하지 않는 데이터입니다.');
+            err.status = 404;
+            throw err;
         }
-        if(data.User.user_id !== req.user.user_id){
-            throw new Error('해당 페이지의 권한이 없습니다.')
+        if(Postdata.user_id !== req.user.user_id){
+            const err = new Error('해당 페이지의 권한이 없습니다.');
+            err.status = 403;
+            throw err;
         }
-        res.render('UpdatePost',{data});
+        const image = await Image.findAll({where:{post_id:id}});
+        return res.status(200).json({Postdata,image});
     } catch (error) {
-        res.send(`
-            <script>
-                alert('${error.message}');
-                window.location.href = '/api/community'
-            </script>
-            `)
+        return res.status(error.status || 500).json({
+            message:error.message
+        })
     }
 })
 
-router.post('/update/:id',authMiddleware,async(req,res)=>{
+router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,res)=>{
     const {id} = req.params;
+    const images = req.files || [];
+    let deleteImageId = req.body.deleteImageId || [];
     try {
         const data = await Post.findOne({where:{post_id:id},include:[{model:User}]});
         if(!data){
             throw new Error('존재하지 않는 데이터입니다.')
         }
-        if(data.User.user_id !== req.user.user_id){
+        if(data.user_id !== req.user.user_id){
             throw new Error('해당 페이지의 권한이 없습니다.')
         }
+        if(!Array.isArray(deleteImageId)){
+            deleteImageId = [deleteImageId];
+        }
+        const currentImageCount = await Image.count({
+            where:{post_id:id}
+        })
+        const deleteImage = deleteImageId.length > 0 ? await Image.findAll({where:{Image_id:deleteImageId,post_id:id}}):[];
+        const fileCount = currentImageCount - deleteImage.length + images.length
+        if(fileCount > 4){
+            await Promise.all(
+                images.map(async image => {
+                    try {
+                        await fs.promises.unlink(image.path);
+                    } catch (error) {
+                        if (error.code !== 'ENOENT') {
+                            console.error(error);
+                        }
+                    }
+                })
+            )
+            return res.status(400).json({
+                message:'한 게시글에 저장할 수 있는 이미지에 갯수는 4개만 가능합니다.'
+            })
+        } 
+        
+        await Promise.all(
+            deleteImage.map(async image=>{
+                try {
+                    await fs.promises.unlink(path.join(__dirname,'../..',image.Image_url));
+                }  catch (err) {
+                    if (err.code !== 'ENOENT') {
+                        throw err
+                    }
+                }
+            })
+        )
+        await Image.destroy({
+            where:{Image_id:deleteImageId,post_id:id}
+        })
+        
+        if(images.length > 0){
+            await Image.bulkCreate(
+                images.map(image=>({
+                    post_id:id,
+                    Image_url:`/uploads/post/${image.filename}`
+                }))
+            )
+            
+        }
+
         const {title,fish_type,content} = req.body;
         await Post.update({
             title,
@@ -204,45 +297,34 @@ router.post('/update/:id',authMiddleware,async(req,res)=>{
         },{
             where: { post_id: id }
         })
-        res.redirect('/api/community');
+        return res.status(204).send()
     } catch (error) {
-        res.send(`
-            <script>
-                alert('${error.message}');
-                window.location.href = '/api/community'
-            </script>
-            `)
+        return res.status(error.status||500).json({message:error.message||'서버에 문제가 발생하였습니다.'})
     }
 })
 
 //댓글
-router.post('/comment',authMiddleware,async(req,res)=>{
+router.post('/comment',devAuthMiddleware,async(req,res)=>{
     try {
         const userId = req.user.user_id;
         const {post_id,content,commentId}  = req.body;
-        console.log(commentId);
         const updatedData = await Comment.create({
             post_id,
             parent_id: commentId || null,
             user_id:userId,
             content
         })
-        console.log(req.body);
-        res.redirect(`/api/community/posts/${post_id}`);
+        return res.status(200).json(updatedData);
     } catch (error) {
-        res.send(`
-            <script>
-                alert('${error.message}');
-                window.location.href = '/api/community'
-            </script>
-            `)
+        res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'})
     }
 })
 
 
-router.post('/comment/:id',authMiddleware,async(req,res)=>{
+router.post('/comment/:id',devAuthMiddleware,async(req,res)=>{
     try {
-        const{content} = req.body;
+        const content = req.body.update;
+        console.log(req.body);
         const {user_id} = req.user;
         const {id} = req.params;
         const data = await Comment.findOne({where:{comment_id:id}})
@@ -251,25 +333,20 @@ router.post('/comment/:id',authMiddleware,async(req,res)=>{
         }else{
             throw new Error('댓글 변경에 오류가 발생하였습니다.')
         }
-        res.redirect(`/api/community/posts/${data.post_id}`);   
+        return res.status(204).send();
     } catch (error) {
-        res.send(`
-            <script>
-                alert('${error.message}');
-                window.location.href = '/api/community'
-            </script>
-            `)
+        return res.status(error.status).json({messgae:error.message||'에러가 발생하였습니다.'})
     }
 
 })
 
 
-router.post('/commentLike/:id',authMiddleware,async(req,res)=>{
+router.post('/commentLike/:id',devAuthMiddleware,async(req,res)=>{
     try {
         console.log('들어옴');
         const {id} = req.params;
         const userId = req.user.user_id;
-        const {post_id} = req.body;
+        let like; 
         const exLikeUser = await CommentLike.findOne({
             where:{
                 user_id:userId,
@@ -282,57 +359,83 @@ router.post('/commentLike/:id',authMiddleware,async(req,res)=>{
                     comment_id:id
                 }
             })
+            like = true;
         }else{
             await CommentLike.create({
                 user_id:userId,
                 comment_id:id
             })
+            like = false
         }
-        res.redirect(`/api/community/posts/${post_id}`)
+        return res.status(200).json({like});        
 ;    } catch (error) {
-        
+        return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'});
     }
 })
 
 
 //게시글 삭제
-router.delete('/posts/:id',authMiddleware,async(req,res)=>{
+router.delete('/posts/:id',devAuthMiddleware,async(req,res)=>{
     console.log('들어감');
     try {
         const {id} = req.params;
         const post = await Post.findOne({where:{post_id:id}})
+        if(!post){
+            const err = new Error('게시글이 존재하지 않습니다.')
+            err.status = 404;
+            throw err;
+        }
         if(req.user.user_id !== post.user_id){
             const err = new Error('제거할 권한이 없습니다.')
             err.status = 403;
             throw err;
-        }   
+        }
+        const images = await Image.findAll({where:{post_id:id}});
+        if(images.length > 0){
+            await Promise.all(
+                images.map(async image => {
+                    const img = path.join(__dirname,'../../',image.Image_url);
+                    try {
+                        await fs.promises.unlink(img);
+                    } catch (error) {
+                        if (error.code !== 'ENOENT') {
+                            console.error(error);
+                        }
+                    }
+                })
+            )
+        }
         const result = await Post.destroy({where:{post_id:id}});
-        console.log(result);
-        res.redirect('/api/community');
+        //삭제 실패
+        if(!result){
+            const error = new Error('제거에 실패하였습니다.')
+            error.status = 404;
+            throw error;
+        }
+        return res.sendStatus(204);
     } catch (error) {
-        let message = error.message;
-        res.json({message});
+        return res.status(error.status||500).json({message:error.message||'서버 오류가 발생하였습니다'});
     }
 })
 
-router.post('/deletecomment/:id',authMiddleware,async(req,res)=>{
+router.post('/deletecomment/:id',devAuthMiddleware,async(req,res)=>{
     try {
         const {id} = req.params;
         const comment = await Comment.findOne({where:{comment_id:id}});
-        if(req.user.user_id !== comment.user_id){
+        if(!comment){
+            const error = new Error('삭제할 댓글이 보이지 않습니다.')
+            error.status = 404;
+            throw error
+        }
+        if(Number(req.user.user_id) !== Number(comment.user_id)){
             throw new Error('제거할 권한이 없습니다.');
         }
         await comment.update({
-            content:'삭제된 댓글입니다.'
+            content:'삭제된 댓글입니다.',is_deleted:true
         });
-        res.redirect(`/api/community/posts/${comment.post_id}`);
+        return res.status(200).json({message:'제거 성공'})
     } catch (error) {
-        res.send(`
-            <script>
-                alert('${error.message}');
-                window.location.href = '/api/community'
-            </script>
-            `)
+        return res.status(error.status||500).json({message:'제거 실패'});
     }
 })
 

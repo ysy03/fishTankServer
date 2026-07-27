@@ -11,15 +11,24 @@
         .change.show{
             display: block;
         }
+        #myButton{
+            display: none;
+        }
+        #myButton.show{
+            display: block;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
+        const id = window.location.pathname.split("/").pop();
+        console.log(id);
         function goCommunicate(){
             window.location.href = '/api/community'
         }
-        function goUpdateCommunity(id){
+        function goUpdateCommunity(){
             window.location.href = `/api/community/update/${id}`;
         }
-        async function destroyCommunicate(id){
+        async function destroyCommunicate(){
             let url = '/api/community/posts/'+id;
             const response = await fetch(url,{
                 method:'DELETE'
@@ -49,77 +58,111 @@
             const form = button.parentElement.querySelector(".change");
             form.classList.toggle('show');
         }
+        async function getData(){
+            const response = await axios(`/api/community/posts/${id}/data`)
+            const data = response.data; 
+            document.getElementById('post_id').value = data.data.post_id;
+            document.getElementById('title').innerText = data.data.title
+            document.getElementById('nickname').innerText = data.data.User.nickname
+            document.getElementById('fishtype').innerText = data.data.fish_type
+            document.getElementById('content').innerText = data.data.content;
+            if(data.mine){
+                const mybutton = document.getElementById('myButton')
+                mybutton.classList.add('show')
+            }
+            const commentDatas = data.commentDatas
+            const replyDatas = data.replyData
+            const commentBox = document.getElementById('comment');
+            commentBox.innerHTML = commentDatas.map(commentdata=>{
+                const replies = data.replyData.filter(
+                    reply => reply.parent_id === comment.comment_id
+                );
+                const ownerButton = commentdata.user_id === data.user_id ?
+                `
+                <div>
+                    <button onclick="toggle(this)">변경하기</button>
+                    <button onclick="">삭제하기</button>
+                    <form action="/api/community/comment" method="POST" class="change">
+                        <input type="hidden" name="post_id" value=${data.data.post_id}>
+                        <input type="hidden" name="comment_id" value=${commentdata.commment_id}>
+                        <textarea name="content"><textarea>
+                        <button>변경하기</button>
+                    </form>
+                </div>` : '';
+                const replyHtml = replies.map(reply=>{
+                    let button = ''
+                    if(reply.user_id == user_id){
+                        button = `
+                            <button onclick="toggle(this)">수정</button>
+                            <button>삭제</button>
+                            <form action="/api/community/comment" method="POST" class="change">
+                                <input type="hidden" name="post_id" value=${data.data.post_id}>
+                                <input type="hidden" name="comment_id" value=${commentdata.commment_id}>
+                                <textarea name="content"></textarea>
+                                <button>변경하기</button>
+                            </form>
+                        `
+                    }
+                    return `
+                            <div class="replyData">
+                                <p>${reply.User.nickname}</p>
+                                <p>${reply.content}</p>
+                                ${button}
+                            </div>
+                        `
+                }).join("");
+                return `
+                    <div>
+                        <p>${commentdata.User.nickname}</p>
+                        <p>${commentdata.content}</p>
+                        ${ownerButton}
+                        <button>좋아요 ${commentdata.likeCount}</button>
+                        <div>
+                            <button onclick="toggle(this)">댓글달기</button>
+                            <form class="change">
+                                <fieldset></fieldset>
+                                <button>답글</button>
+                            </form>
+                        </div>
+                        <div class="replyData">
+                            ${replyHtml}
+                        </div>
+                    </div>
+                `
+            }).join(''); 
+        }
+        getData()
     </script>
 </head>
 <body>
     <table>
         <tr>
             <th>제목</th>
-            <td><%=data.title  %></td>
+            <td id="title"></td>
         </tr>
         <tr>
             <th>사용자</th>
-            <td><%=data.User.nickname  %></td>
+            <td id="nickname"></td>
         </tr>
         <tr>
             <th>물고기 종류</th>
-            <td><%= data.fish_type %></td>
+            <td id="fishtype"></td>
         </tr>
     </table>
-    <%= data.content %>
+    <div id="content">
+       <!--여기는 내용--> 
+    </div>
     <br>
-    <% if (mine) { %>
-     <button onclick="goUpdateCommunity('<%=data.post_id %>')">수정하기</button>
-     <button onclick="destroyCommunicate('<%=data.post_id %>')">제거하기</button>
-    <% } %>
+    <div id="myButton">
+     <button onclick="goUpdateCommunity()">수정하기</button>
+     <button onclick="destroyCommunicate()">제거하기</button>
+    </div>
     <button onclick="goCommunicate()">돌아가기</button>
     <form action="/api/community/comment" method="post">
-        <input type="hidden" name="post_id" value="<%= data.post_id %>">
+        <input type="hidden" name="post_id" id="post_id">
         <textarea name="content" id="content" placeholder="답변을 작성해주세요"></textarea>
         <button>답변 제공</button>
     </form>
-    <% commentDatas.forEach(commentData => { %>
-        <div>
-            <hr>
-            <p><%= commentData.content %></p>
-            <p>작성자:<%= commentData.User.nickname %></p>
-            <%if (!commentData.is_deleted) { %>
-                <% if (user_id===commentData.user_id) { %>
-                <div>
-                    <button onclick="toggle(this)">변경</button>
-                    <form action="/api/community/deletecomment/<%=commentData.comment_id%>" method="post">
-                        <button>삭제</button>
-                    </form>
-                    <form action="/api/community/comment/<%=commentData.comment_id %>" method="post" class="change">
-                        <textarea name="content">
-                            <%=commentData.content %>
-                        </textarea>
-                        <button>변경하기</button>
-                    </form>
-                    <% } %>
-                    <div>
-                        <button onclick="commentLike({post_id:'<%=data.post_id %>',comment_id:'<%=commentData.comment_id %>'})">좋아요<%=commentData.get('likeCount')  %></button>
-                        <button onclick="toggle(this)">답글</button>
-                        <form action="/api/community/comment" method="post" class="change">
-                            <input type="hidden" name="post_id" value="<%=commentData.post_id%>">
-                            <input type="hidden" name="commentId" value="<%=commentData.comment_id%>">
-                            <textarea name="content" placeholder="답글 달기">
-
-                            </textarea>
-                            <button>답글달기</button>
-                        </form>
-                        <div>
-                            <% replyData.filter(reply=>reply.parent_id === commentData.comment_id).forEach(reply => { %>
-                                <p><%=reply.content%></p>
-                                <p><%=reply.User.nickname%></p>
-                                <button onclick="commentLike({post_id:'<%=reply.post_id %>',comment_id:'<%=reply.comment_id %>'})">좋아요<%=reply.get('likeCount')  %></button>
-                            <% }) %>
-                        </div>
-                    </div>
-                </div>    
-            <%}%>
-            
-        </div>
-    <% }) %>
+    <div id="comment"></div>
 </body>
 </html>
