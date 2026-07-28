@@ -6,6 +6,7 @@ const FishInfo = require('./fishinfo/index');
 const communicate = require('./communicate/index'); 
 const tank = require('./tank/index');
 const daily = require('./daily/index');
+const chatbot = require('./chatbot/index');
 
 app.use('/users',auth);
 app.use('/index',index);
@@ -13,6 +14,7 @@ app.use('/fishinfo',FishInfo);
 app.use('/community',communicate);
 app.use('/tank',tank);
 app.use('/daily',daily)
+app.use('/chatbot',chatbot);
 
 
 module.exports = app;

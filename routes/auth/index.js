@@ -161,9 +161,6 @@ router.get('/google/callback',async(req,res)=>{
     }
 })
 
-routrt.post('/getName',devAuthMiddleware,async(req,res)=>{
-    
-})
 
 router.post('/refresh',async(req,res)=>{
     try {
@@ -251,7 +248,6 @@ router.get('/me',devAuthMiddleware,async(req,res)=>{
 
 router.post('/profile',devAuthMiddleware,upload.single('image'),async(req,res)=>{
     try {
-        console.log(req.body);
         const {nickname} = req.body;
         const image = req.file;
         console.log(image);
@@ -307,20 +303,6 @@ router.post('/profile',devAuthMiddleware,upload.single('image'),async(req,res)=>
 })
 
 
-
-router.get('/kakao/logout',(req,res)=>{
-    res.send(`<script>
-        alert('로그아웃 완료')
-        window.location.href = '/api/users'
-        </script>`)
-})
-
-
-router.get('/error',(req,res)=>{
-    const {message} = req.query
-    console.log(message);
-    res.json(message);
-})
 
 const createToken = (id) => {
     
