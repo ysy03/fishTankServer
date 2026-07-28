@@ -71,7 +71,7 @@ router.post('/kakao/callback',async(req,res)=>{
         let exUser = await User.findOne({where:{sns_id:email,provider:'kakao'}});
         if(!exUser){
             const NewUser = await User.create({
-                nickname:nickname,
+                nickname:null,
                 provider:'kakao',
                 sns_id:email
             })
@@ -84,7 +84,7 @@ router.post('/kakao/callback',async(req,res)=>{
         },{where:{user_id:exUser.user_id}})
 
 
-        return res.json({accessToken,refreshtoken,userId}); 
+        return res.json({accessToken,refreshtoken,userId,nickname}); 
     } catch (error) {
         console.log(error);
         return res.status(error.status || 500).json({
@@ -155,10 +155,14 @@ router.get('/google/callback',async(req,res)=>{
             token:refreshtoken
         },{where:{user_id:exUser.user_id}})
 
-        return res.json({accessToken,refreshtoken});  
+        return res.json({accessToken,refreshtoken,nickname:name});  
     } catch (error) {
         res.render('error',{message:'구글 로그인이 실패하였습니다.'})
     }
+})
+
+routrt.post('/getName',devAuthMiddleware,async(req,res)=>{
+    
 })
 
 router.post('/refresh',async(req,res)=>{
@@ -197,7 +201,7 @@ router.post('/refresh',async(req,res)=>{
         })
         res.cookie('refreshtoken',refreshtoken,{
             httpOnly:true,
-            maxAge: 7 * 24 * 60 * 1000
+            maxAge: 7 * 24 * 60* 60 * 1000
         })
         return res.status(200).json({
             accesstoken
