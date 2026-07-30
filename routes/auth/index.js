@@ -65,7 +65,6 @@ router.post('/kakao/callback',async(req,res)=>{
             }
         )
 
-        const nickname = userData.data.properties.nickname;
         const email = userData.data.kakao_account.email;
         
         let exUser = await User.findOne({where:{sns_id:email,provider:'kakao'}});
@@ -84,7 +83,7 @@ router.post('/kakao/callback',async(req,res)=>{
         },{where:{user_id:exUser.user_id}})
 
 
-        return res.json({accessToken,refreshtoken,userId,nickname}); 
+        return res.json({accesstoken,refreshtoken}); 
     } catch (error) {
         console.log(error);
         return res.status(error.status || 500).json({
@@ -135,12 +134,11 @@ router.get('/google/callback',async(req,res)=>{
                 }
             }
         )
-        const {name,email} = userData.data;
+        const {email} = userData.data;
         let exUser = await User.findOne({where:{sns_id:email,provider:'google'}});
         if(!exUser){
             const newUser = await User.create(
                 {
-                    nickname:name,
                     provider:'google',
                     sns_id:email
                 }
@@ -155,14 +153,10 @@ router.get('/google/callback',async(req,res)=>{
             token:refreshtoken
         },{where:{user_id:exUser.user_id}})
 
-        return res.json({accessToken,refreshtoken,nickname:name});  
+        return res.json({accesstoken,refreshtoken});  
     } catch (error) {
         res.render('error',{message:'구글 로그인이 실패하였습니다.'})
     }
-})
-
-routrt.post('/getName',devAuthMiddleware,async(req,res)=>{
-    
 })
 
 router.post('/refresh',async(req,res)=>{

@@ -23,21 +23,30 @@ module.exports = (sequelize,DataTypes)=>{
         user_id:{
             type:DataTypes.INTEGER,
         },
+        record_date:{
+            type:DataTypes.DATE
+        },
         temperature:{
             type:DataTypes.FLOAT
         },
-        water_quality:{
-            type:DataTypes.INTEGER
+        max_temperature:{
+            type:DataTypes.FLOAT
         },
-        measured_at:{
-            type:DataTypes.DATE,
-            defaultValue:DataTypes.NOW
+        max_temperature_at:{
+            type:DataTypes.DATE
+        },
+        min_temperature:{
+            type:DataTypes.FLOAT
+        },
+        min_temperature_at:{
+            type:DataTypes.DATE
         }
     },{
         sequelize,
         modelName:'Sensor',
         tableName:'sensor',
-        timestamps:false
+        timestamps:false,
+        updatedAt:'updated_at'
     })
     
     return Sensor;

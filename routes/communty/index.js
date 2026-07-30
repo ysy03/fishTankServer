@@ -7,11 +7,9 @@ const devAuthMiddleware = require('../auth/devauthMiddleware');
 const upload = require('../uploaded/profileupload');
 const fs = require('fs');
 const path = require('path');
-//커뮤니티 리스트 관련
-router.get('/',async(req,res)=>{
-    res.render('communicationList');
-})
 
+
+//커뮤니티 리스트 관련
 router.get('/list',async (req,res) => {
     try {
         const {fish_type,keyword} = req.query;
@@ -44,19 +42,9 @@ router.get('/list',async (req,res) => {
     }
 })
 
-router.get('/mypost',async(req,res)=>{
-    try {
-        res.render('myCommunity');
-    } catch (error) {
-        console.log(error);   
-    }
-})
-
-
-router.get('/mypost/data',async(req,res)=>{
+//내가 작성한 게시글 확인
+router.get('/mypost/data',devAuthMiddleware,async(req,res)=>{
     const {fish_type,keyword} = req.query;
-    const {user_id} = req.user;
-    console.log(req.user);
     let where = {}
     const selectedFishTypes = fish_type ? 
                             Array.isArray(fish_type) ? 
@@ -80,7 +68,6 @@ router.get('/mypost/data',async(req,res)=>{
             attributes:['post_id','title','fish_type'],
             include:{model:User,attributes:['nickname']}
         })
-        console.log(fish_type);
         return res.json({datas,selectedFishTypes,keyword});
     } catch (error) {
         console.log(error);
@@ -91,12 +78,6 @@ router.get('/mypost/data',async(req,res)=>{
 
 
 //게시글 작성 관련
-router.get('/posts',async(req,res)=>{
-    const nickname = req.user.nickname;
-    res.render('newCommunicate',{nickname});
-
-})
-
 router.post('/posts',devAuthMiddleware,upload.array('images',4),async (req,res) => {
     try {
         const {title,fish_type,content} = req.body;

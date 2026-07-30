@@ -79,24 +79,27 @@ router.get('/',devAuthMiddleware, async(req,res)=>{
             })
             day = resultData;
         }
-        const Feed = await Feederlog.findAll({
-            where:{
-                device_id:tank.device_id,
-                feed_time:{
-                    [Op.gte]:start,
-                    [Op.lt]:end
+        const [Feed,waterChange] = await Promise.all([
+            Feederlog.findAll({
+                where:{
+                    device_id:tank.device_id,
+                    feed_time:{
+                        [Op.gte]:start,
+                        [Op.lt]:end
+                    }
                 }
-            }
-        })
-        const waterChange = await Waterchangelog.findAll({
+            })//Feed
+            ,
+            Waterchangelog.findAll({
             where:{
                 device_id:tank.device_id,
                 started_At:{
                     [Op.gte]:start,
                     [Op.lt]:end
+                    }
                 }
-            }
-        })
+            })//waterChange
+        ])
         return res.status(200).json({Feed,waterChange,day});
     }catch(error){
         console.error('일일 기록 조회 실패:', error);

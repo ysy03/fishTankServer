@@ -4,17 +4,7 @@ const authMiddleware = require('../auth/authMiddleware');
 const {User,Fishinfo} = require('../../models');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
 
-router.get('/',devAuthMiddleware,async(req,res)=>{
-    try {
-        const {user_id} = req.user;
-        const data = await User.findOne({where:{user_id},include:[{model:Fishinfo}]});
-        const fishInfo = data.Fishinfos;
-        return res.status(200).json(data);
-    } catch (error) {
-        return res.status(404).json({message:'데이터를 불러들이지 못했습니다.'}) 
-    }
-})
-
+//물고기 정보 전달
 router.get('/data',devAuthMiddleware,async(req,res)=>{
     try {
         const {user_id} = req.user;
@@ -26,7 +16,7 @@ router.get('/data',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-
+//새로운 물고기 등록
 router.post('/new',devAuthMiddleware,async(req,res)=>{
     try {
         const {user_id} = req.user;
@@ -58,12 +48,13 @@ router.post('/new',devAuthMiddleware,async(req,res)=>{
     }
 })
 
+//지정한 물고기 종류의 갯수 변경
 router.post('/:id',devAuthMiddleware,async (req,res) => {
     try {
         const {id} = req.params;
         const {fish_type,fish_count} = req.body;
         const result = await Fishinfo.update({fish_type,fish_count},{where:{user_id:req.user.user_id,fish_id:id}});
-        return res.status(200).send();   
+        return res.status(200).send({result});   
     } catch (error) {
         return res.status(error.status||500).json({
             message:error.message||'서버에 문제가 발생하였습니다.'
@@ -71,6 +62,8 @@ router.post('/:id',devAuthMiddleware,async (req,res) => {
     }
 })
 
+
+//물고기 종류 삭제
 router.delete('/:id',devAuthMiddleware,async (req,res) => {
     try {
     const Fishid = req.params.id;

@@ -22,7 +22,7 @@ module.exports = (sequelize,DataTypes) =>{
                 model:'user',
                 key:'user_id'
             },
-            unique:ture,
+            unique:true,
             onDelete:'CASCADE'
         },
         
@@ -32,4 +32,6 @@ module.exports = (sequelize,DataTypes) =>{
             tableName:'chatbotroom',
             timestamps:true
     })
+
+    return ChatbotRoom
 }
