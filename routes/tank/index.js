@@ -1,11 +1,12 @@
 const app = require('express');
 const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
-const {Sensor,Tank, Feederlog,Waterchangelog} = require('../../models');
+const {Sensor,Tank, Feederlog,Waterchangelog,AiAnalyze} = require('../../models');
 const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
 
 
+<<<<<<< HEAD
 router.post('/Sensor',async(req,res)=>{
     try {
         const data = req.json();
@@ -31,6 +32,27 @@ router.post('/Sensor',async(req,res)=>{
 
 
 
+=======
+router.post('/sensor',async(req,res)=>{
+    try {
+        const tank = await Tank.findOne({where:{device_id:'SS501'}})
+        const sensor = await Sensor.create({
+            device_id:tank.device_id,
+            user_id:tank.user_id,
+            temperature:22.3,
+            water_quality:345,
+        })
+        const analyze = await AiAnalyze.create({
+            device_id:tank.device_id,
+            user_id:tank.user_id,
+            activity:24,
+            detections:[]
+        })
+        return res.status(200).json({sensor,analyze})
+    } catch (error) {
+        return res.status(error.status||500).json({messgae:error.message&&'에러가 발생하였습니다.'})
+    }
+>>>>>>> 2e190fb8871730d2664ab094d0347829eea5becb
 })
 
 router.get('/log',devAuthMiddleware,async(req,res)=>{
