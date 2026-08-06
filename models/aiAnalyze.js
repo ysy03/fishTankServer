@@ -3,7 +3,7 @@ const { Model } = require("sequelize");
 
 module.exports = (sequelize,DataTypes)=>{
     class AiAnalyze extends Model{
-
+        
     }
 
     AiAnalyze.init({
@@ -39,7 +39,7 @@ module.exports = (sequelize,DataTypes)=>{
         },
         analyzed_at:{
             type:DataTypes.DATE,
-            defaultValue:Sequelize.literal('CURRENT_TIMESTAMP')
+            defaultValue:sequelize.literal('CURRENT_TIMESTAMP')
         }
     },{
         sequelize,

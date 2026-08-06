@@ -9,6 +9,8 @@ module.exports = (sequelize,DataTypes)=>{
             db.Tank.hasMany(db.Feederlog,{foreignKey:'device_id',targetKey:'device_id'});
             db.Tank.belongsTo(db.User,{foreignKey:'user_id',targetKey:'user_id'});
             db.Tank.hasMany(db.Waterchangelog,{foreignKey:'device_id',targetKey:'device_id'});
+            db.Tank.hasMany(db.WaterQuality,{foreignKey:'device_id',soruceKey:'device_id'});
+            db.Tank.hasMany(db.Alert,{foreignKey:'device_id',soruceKey:'device_id'})
         }
     }
 
@@ -30,6 +32,22 @@ module.exports = (sequelize,DataTypes)=>{
         },
         device_id:{
             type:DataTypes.STRING
+        },
+        min_temp:{
+            type:DataTypes.FLOAT,
+            allowNull:true
+        },
+        max_temp:{
+            type:DataTypes.FLOAT,
+            allowNull:true
+        },
+        normal_waterquality:{
+            type:DataTypes.INTEGER,
+            allowNull:true
+        },
+        warning_waterquality:{
+            type:DataTypes.INTEGER,
+            allowNull:true
         }
         
     },{

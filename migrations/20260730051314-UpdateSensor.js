@@ -4,9 +4,9 @@
 module.exports = {
   async up (queryInterface, Sequelize) {
     await queryInterface.addColumn('sensor','record_date',{
-      type:Sequelize.DATEONLY,
+      type:Sequelize.DATE,
       allowNull:false,
-      defaultValue:Sequelize.literal('CURRENT_DATE')
+      defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
     });
     await queryInterface.addColumn('sensor','max_temperature',{
       type:Sequelize.FLOAT,

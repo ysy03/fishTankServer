@@ -1,88 +1,173 @@
 const app = require('express');
 const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
-const {Sensor,Tank, Feederlog,Waterchangelog,AiAnalyze} = require('../../models');
+const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog} = require('../../models');
 const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
 
+router.get('/',devAuthMiddleware,async(req,res)=>{
+    const tankData = await Tank.findAll({where:{user_id:req.user_id}});
+    return res.json(tankData);
+})
 
-<<<<<<< HEAD
-router.post('/Sensor',async(req,res)=>{
+//온도,수질 지정
+router.post('/setting',devAuthMiddleware,async(req,res)=>{
     try {
-        const data = req.json();
-        if(data === null){
+        const {min_temp,
+            max_temp,
+            normal_waterquality,
+            warning_waterquality,
+            tank_name,
+            device_id} = req.body;
+        const {user_id} = req.user;
+        const tank = await Tank.findOne({where:{user_id,device_id:device_id||'SS501'}});
+        if(!tank){
+            return res.status(404).json({message:'어항이 저장되어 있지 않습니다.'})
+        }
+        await tank.update({
+            user_id,
+            tank_name,
+            device_id,
+            min_temp,
+            max_temp,
+            normal_waterquality,
+            warning_waterquality
+        })
+        return res.status(200).json({tank_id});
+    } catch (error) {
+        console.error(error.message);
+        return res.status(error.status||500).json({message:'데이터 저장에 실패하였습니다.'})
+    }
+})
+
+router.get('/setting/:id',devAuthMiddleware,async(req,res)=>{
+    try {
+        const{id:device_id} = req.params;
+        const tank = await Tank.findOne({where:{device_id}});
+        if(!tank){
+            return res.status(400).json({message:'데이터를 가져오지 못했습니다.'})
+        }
+        return res.status(200).json(tank);
+    } catch (error) {
+        console.error(error.message);
+        return res.status(error.status||500).json({message:error.message || '서버에 오류가 발생하였습니다.'});
+    }
+})
+
+router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
+    try {
+        const {id:devce_id} = req.params;
+        const {min_temp,
+            max_temp,
+            normal_waterquality,
+            warning_waterquality,
+            tank_name,
+            } = req.body;
+            const tank = await Tank.findOne({where:{devce_id}});
+        if(!tank){
+            return res.status(400).json({message:'데이터를 가져오지 못했습니다.'})
+        }
+        await tank.update({
+            min_temp,
+            max_temp,
+            normal_waterquality,
+            warning_waterquality,
+            tank_name
+        })
+        return res.sendStatus(204)
+    } catch (error) {
+        console.error(error.message);
+        return res.status(error.status||500).json({message:error.message || '서버에 오류가 발생하였습니다.'});
+    }
+})
+
+
+router.post('/Sensor',async(req,res)=>{
+    const now = new Date();
+    const record_date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    try {
+        const data = req.body;
+        if(!data){
             return res.status(400).json({message:'온도 전달에 실패하였습니다.'})
         }
 
-        const tank = await Tank.findOne({where:{tank_id:data["tankId"]||'SS501'}})
+        const tank = await Tank.findOne({where:{device_id:data.tankId||'SS501'}})
         if(!tank){
             return res.status(400).json({message:'저장한 어항이 없습니다.'})
         }//원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
-        await Sensor.create({
-            device_id:'SS501',//이건 데이터 실험용 배포 시 프론트에서 tank_id를 받아와서 사용할 것
+        const [water_quality,temperature] = await Promise.all([
+            WaterQuality.findOne({where:{device_id:tank.device_id,record_date}}),
+            Sensor.findOne({where:{device_id:tank.device_id,record_date}})
+        ])
+        if(water_quality){
+            await water_quality.update({
+                water_quality:data.water_quality,
+                count:water_quality.count+1,
+                waterquality_sum:water_quality.waterquality_sum+data.water_quality,
+                waterquality_avg:(water_quality.waterquality_sum+data.water_quality) / (water_quality.count+1)
+            })
+        }else{
+        await WaterQuality.create({
+            device_id:tank.device_id,
             user_id:tank.user_id,
-            temperature:data["temperature"],
-            water_quality:data["waterQuality"]  
-        }) 
+            water_quality:data.water_quality,
+            record_date,
+            count:1,
+            waterquality_sum:data.water_quality,
+            waterquality_avg:data.water_quality
+        })
+        }//수질 저장
+        if(temperature){
+            await temperature.update({
+                temperature:data.temperature,
+                max_temperature: temperature.max_temperature < data.temperature ? data.temperature : temperature.max_temperature,
+                max_temperature_at: temperature.max_temperature < data.temperature ? now : temperature.max_temperature_at,
+                min_temperature:temperature.min_temperature > data.temperature ? data.temperature : temperature.min_temperature,
+                min_temperature_at:temperature.min_temperature > data.temperature ? now : temperature.min_temperature_at,
+                count : temperature.count + 1,
+                temp_sum : temperature.temp_sum + data.temperature,
+                temp_avg: (temperature.temp_sum + data.temperature) / (temperature.count+1)
+            })
+        }else{
+            await Sensor.create({
+                device_id:tank.device_id,
+                user_id:tank.user_id,
+                record_date,
+                temperature:data.temperature,
+                max_temperature:data.temperature,
+                max_temperature_at:now,
+                min_temperature:data.temperature,
+                min_temperature_at:now,
+                count:1,
+                temp_sum:data.temperature,
+                temp_avg:data.temperature
+
+            })
+        }
         return res.sendStatus(204);  
     } catch (error) {
         console.error(error.message);
         return res.status(error.status||500).json({message:error.message||'서버에 에러가 발생하였습니다.'})
     }
 
-
-
-=======
-router.post('/sensor',async(req,res)=>{
-    try {
-        const tank = await Tank.findOne({where:{device_id:'SS501'}})
-        const sensor = await Sensor.create({
-            device_id:tank.device_id,
-            user_id:tank.user_id,
-            temperature:22.3,
-            water_quality:345,
-        })
-        const analyze = await AiAnalyze.create({
-            device_id:tank.device_id,
-            user_id:tank.user_id,
-            activity:24,
-            detections:[]
-        })
-        return res.status(200).json({sensor,analyze})
-    } catch (error) {
-        return res.status(error.status||500).json({messgae:error.message&&'에러가 발생하였습니다.'})
-    }
->>>>>>> 2e190fb8871730d2664ab094d0347829eea5becb
+    
 })
 
-router.get('/log',devAuthMiddleware,async(req,res)=>{
+router.get('/logdata',devAuthMiddleware,async(req,res)=>{
     try {
+        const {device_id} = req.query;
         const today =new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate()+1);
-        const tank = await Tank.findOne({
-            where:{
-                user_id:req.user.user_id,
-            }
-        })
-        const FeedData = await Feederlog.findAll({
-            where:{
-                device_id:tank.device_id,
-                feed_time:{
-                    [Op.gte]:today,
-                    [Op.lt]:tomorrow
-                }}
-        })
-        const waterchange = await Waterchangelog.findAll({
-            where:{
-                device_id:tank.device_id,
-                end_at:{
-                    [Op.gte]:today,
-                    [Op.lt]:tomorrow
-                }
-            }
-        })
+        const [FeedData,waterchange]  = await Promise.all([
+            FeedData.findAll({where:{device_id:device_id,feed_time:{[Op.gte]:today,[Op.lt]:tomorrow}}}),
+            Waterchangelog.findAll({where:{device_id:device_id,started_at:{
+                [Op.gte] : today,
+                [Op.lt]:tomorrow
+            }}})
+        ])
+        
         return res.json({waterchange,FeedData});   
     } catch (error) {
         return res.status(error.status||500).json({message:error.message||'에러 메세지가 발생하였습니다.'})
@@ -90,39 +175,60 @@ router.get('/log',devAuthMiddleware,async(req,res)=>{
 })
 
 
-router.get('/lasts',devAuthMiddleware,async (req,res) => {
+router.get('/data',devAuthMiddleware,async (req,res) => {
     try {
-        const today = new Date();
+        const {device_id='SS501'} = req.query;
+        /*const today = new Date();
         today.setHours(0,0,0,0);
         const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate()+1);
-        const waterinfo = await Sensor.findOne({
-            where:{
-                user_id:req.user.user_id,
-                measured_at:{
-                    [Op.gte]:today,
-                    [Op.lt]:tomorrow
-                }
-            },
-            order:[['measured_at','DESC']]
-        })
-        const temstatus = await Sensor.findOne({
-            attributes:[
-                [fn('MAX',col('temperature')),'Maxtemperature'],
-                [fn('MIN',col('temperature')),'Mintemperature']
-            ],
-            where:{
-                user_id:req.user.user_id,
-                measured_at:{
-                    [Op.gte]:today,
-                    [Op.lt]:tomorrow
-                }
-            },
-            order:[['measured_at','DESC']]
-        })
-        return res.json({waterinfo,temstatus});
+        tomorrow.setDate(today.getDate()+1);*/
+        const tank = await Tank.findOne({where:{
+            device_id
+        }})
+        if(!tank){
+            return res.status(400).json({message:'저장한 기기를 발견하지 못했습니다.'})
+        }
+        const [temp,waterQuality] = await Promise.all([
+            Sensor.findOne({where:{device_id},order:[['record_date','DESC']]}),
+            WaterQuality.findOne({where:{device_id},order:[['record_date','DESC']]})
+
+        ])
+        if(!temp || !waterQuality){
+            return res.status(400).json({message:'최근에 기록한 정보가 없습니다.'})
+        }
+        let tempStatue;
+        let waterQuailtyStatus;
+        //const fishActivity = await axios(`http://{서버주소}/api/ai/activity/result`)
+        if(temp.temperature<tank.min_temp){
+            tempStatue = 'dangerous low'
+            console.log('위험 너무 차가워요');
+        }else if(temp.temperature < tank.min_temp + 2){
+            tempStatue = 'Warning low'
+            console.log('주의 온도가 낮아요')
+        }else if(tank.max_temp < temp.temperature){
+            tempStatue = 'dangerous hot'
+            console.log('위험 너무 뜨거워요')
+        }else if(tank.max_temp -2 < temp.temperature){
+            tempStatue = 'Warning hot'
+            console.log('주의 온도가 높아요')
+        }else{
+            tempStatue = 'normal'
+            console.log('온도가 정상이네요')
+        }//온도
+        if(waterQuality.water_quality < tank.normal_waterquality){
+            waterQuailtyStatus = 'clear'
+            console.log('꺠끗하네요')
+        }else if(waterQuality.water_quality < tank.warning_waterquality){
+            waterQuailtyStatus = 'middle'
+            console.log('수질이 탁하네요')
+        }else{
+            waterQuailtyStatus = 'very dirty'
+            console.log('너무 더러워요');
+        }
+        return res.json({temp,waterQuality,tempStatue,waterQuailtyStatus});
     } catch (error) {
-        return res.status(error.status).json({message:error.message||'서버에 오류가 발생하였습니다.'});
+        console.error(error.message)
+        return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'});
     }
     
 })
@@ -145,7 +251,7 @@ router.post('/feed',async(req,res)=>{
             device_id:tank.device_id,
             status
         })
-        return res.json({Data})
+        return res.status(201).json({Data})
 
     } catch (error) {
         console.error('error');

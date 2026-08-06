@@ -1,109 +1,80 @@
 const app = require('express');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
-const {Tank,Daily,Sensor,Feederlog,Waterchangelog} = require('../../models');
+const {Tank,WaterQuality,Sensor,Feederlog,Waterchangelog} = require('../../models');
 const { Op, col,fn } = require('sequelize');
 const router = app.Router();
 
 router.get('/',devAuthMiddleware, async(req,res)=>{
-    try{
-        const {daily} = req.query;
-        const start = new Date(daily);
-        start.setHours(0,0,0,0);
-        const end = new Date(start);
-        end.setDate(end.getDate()+1);
-        end.setHours(0,0,0,0);
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        if (!daily) {
-            return res.status(400).json({
-                message: '날짜를 입력해주세요.'
-            });
-        }
-        if(today.getTime() <= start.getTime()){
-            
-            return res.status(404).json({message:'데이터가 존재하지 않습니다.'})
+    try {
+        const {day,device_id = 'SS501'} = req.query;
+        const {user_id} = req.user;//유저 정보 가져옴
+        if(!day){
+            return res.status(400).json({message:'날짜를 입력해주세요'})
         }
         const tank = await Tank.findOne({
             where:{
-                user_id:req.user.user_id
+                user_id,
+                device_id
             }
         })
         if(!tank){
-            return res.status(400).json({
-                message:'저장한 어항이 존재하지 않습니다.'
-            })
+            return res.status(403).json({message:'유저가 등록한 어항이 아닙니다.'})
         }
-        let day;
-        day = await Daily.findOne({
-            where:{
-                user_id:req.user.user_id,
-                daily:{
-                    [Op.gte]:start,
-                    [Op.lt]:end
-                }
-            }
-        })
-        if(!day)
-        if(!day&&today.getTime() < start.getTime()){
-            let message;
-            const result = await Sensor.findOne({
-                attributes:[
-                    'user_id',
-                    'device_id',
-                    [fn('AVG',col('temperature')),'avgTemp'],
-                    [fn('MAX',col('temperature')),'maxTemp'],
-                    [fn('MIN',col('temperature')),'minTemp'],
-                    [fn('AVG',col('water_quality')),'avgWaterQuailty']
-                ],
+        const selected_day = new Date(day);
+        selected_day.setHours(0,0,0,0);
+        const next_day = new Date(selected_day);
+        next_day.setDate(next_day.getDate()+1);
+        next_day.setHours(0,0,0,0);//날짜 지정
+        const[temp,waterQuality,Feeding,waterChange] = await Promise.all([
+            Sensor.findOne({where:{
+                user_id,
+                device_id,
+                record_date:{
+                [Op.gte]: selected_day,
+                [Op.lt] : next_day
+            }}}),//온도 정보
+            WaterQuality.findOne({
                 where:{
-                    user_id:req.user.user_id,
-                    measured_at:{
-                        [Op.gte]:start,
-                        [Op.lt]:end
+                    user_id,
+                    device_id,
+                    record_date:{
+                        [Op.gte]:selected_day,
+                        [Op.lt]:next_day
                     }
-                },
-                group:['user_id','device_id'],
-                raw:true
-            })
-            if(!result){
-                console.log('어제 기록한 내용이 없습니다.');
-                return res.status(400).json({message:'데이터를 불러오는 것이 실패하였습니다.'});
-            }
-            const resultData = await Daily.create({
-                user_id:result.user_id,
-                min_temperature:result.minTemp,
-                max_temperature:result.maxTemp,
-                avg_temperature:result.avgTemp,
-                water_quality:result.avgWaterQuailty,
-                daily:start
-            })
-            day = resultData;
-        }
-        const [Feed,waterChange] = await Promise.all([
+                }
+            }),//수질
             Feederlog.findAll({
                 where:{
-                    device_id:tank.device_id,
+                    device_id,
                     feed_time:{
-                        [Op.gte]:start,
-                        [Op.lt]:end
+                        [Op.gte]:selected_day,
+                        [Op.lt]:next_day
                     }
-                }
-            })//Feed
-            ,
+                },
+                order:[
+                    ['feed_time','ASC'],
+                ]
+            }),//먹이
             Waterchangelog.findAll({
-            where:{
-                device_id:tank.device_id,
-                started_At:{
-                    [Op.gte]:start,
-                    [Op.lt]:end
+                where:{
+                    device_id,
+                    started_at:{
+                        [Op.gte]:selected_day,
+                        [Op.lt]:next_day
                     }
                 }
-            })//waterChange
+            })
         ])
-        return res.status(200).json({Feed,waterChange,day});
-    }catch(error){
-        console.error('일일 기록 조회 실패:', error);
-        return res.status(error.status||500).json({message:error.message||'에러 메세지가 발생하였습니다.'});
+
+        return res.status(200).json({temp,waterQuality,waterChange,Feeding})
+        /**
+         1번 일지 정보가 들어온다.
+         2번 일지에 맞는 정보(온도/물상태/먹이지급 상태/물갈이 정보)를 가져온다
+         3번 제출한다.
+         */
+    } catch (error) {
+        console.error(error.message);
+        return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'})
     }
 })
 

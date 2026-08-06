@@ -27,7 +27,8 @@ module.exports = (sequelize,DataTypes)=>{
             type:DataTypes.DATE
         },
         temperature:{
-            type:DataTypes.FLOAT
+            type:DataTypes.FLOAT,
+            allowNull:false
         },
         max_temperature:{
             type:DataTypes.FLOAT
@@ -40,12 +41,26 @@ module.exports = (sequelize,DataTypes)=>{
         },
         min_temperature_at:{
             type:DataTypes.DATE
+        },
+        count:{
+            type:DataTypes.INTEGER,
+            allowNull:false,
+            defaultValue:0
+        },
+        temp_sum:{
+            type:DataTypes.DOUBLE,
+            allowNull:true,
+        },
+        temp_avg:{
+            type:DataTypes.DOUBLE,
+            allowNull:true,
         }
     },{
         sequelize,
         modelName:'Sensor',
         tableName:'sensor',
-        timestamps:false,
+        timestamps:true,
+        createdAt:false,
         updatedAt:'updated_at'
     })
     

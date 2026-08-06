@@ -33,9 +33,7 @@ module.exports = (sequelize,DataTypes) =>{
             timestamps:true
     })
 
-<<<<<<< HEAD
-    return ChatbotRoom
-=======
+    
     return ChatbotRoom;
->>>>>>> 2e190fb8871730d2664ab094d0347829eea5becb
+
 }

@@ -211,6 +211,7 @@ router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
 router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,res)=>{
     const {id} = req.params;
     const images = req.files || [];
+    console.log(images);
     let deleteImageId = req.body.deleteImageId || [];
     try {
         const data = await Post.findOne({where:{post_id:id},include:[{model:User}]});

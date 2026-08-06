@@ -35,9 +35,9 @@ router.get('/kakao',(req,res)=>{
 })
 
 
-router.post('/kakao/callback',async(req,res)=>{
+router.get('/kakao/callback',async(req,res)=>{
     try {
-        const {code} = req.body;
+        const {code} = req.query;
 
         const token = await axios.post(
             "https://kauth.kakao.com/oauth/token",
@@ -162,15 +162,15 @@ router.get('/google/callback',async(req,res)=>{
 
 router.post('/refresh',async(req,res)=>{
     try {
-        const refreshCookies = req.cookies.refreshtoken;
-        if(!refreshCookies){
+        const {refreshtoken} = req.body
+        if(!refreshtoken){
             return res.status(401).json({
                 message:"리프레쉬 토큰이 없습니다."
             })
         }
         let decode;
         try {
-            decode = jwt.verify(refreshCookies,process.env.JWT_REFRESH);
+            decode = jwt.verify(refreshtoken,process.env.JWT_REFRESH);
         } catch (error) {
             return res.status(401).json({
                 code: 'INVALID_REFRESH_TOKEN',
@@ -183,26 +183,21 @@ router.post('/refresh',async(req,res)=>{
                 message:'유저가 존재하지 않습니다.'
             })
         }
-        if(user.token !== refreshCookies){
+        if(user.token !== refreshtoken){
             return res.status(401).json({
                 code: 'REFRESH_TOKEN_MISMATCH',
                 message: '등록되지 않은 리프레시 토큰입니다.'
             });
         }
 
-        const {accesstoken,refreshtoken} = createToken(user.user_id);
+        const tokens = createToken(user.user_id);
         await user.update({
-            token:refreshtoken
+            token:tokens.refreshtoken
         })
-        res.cookie('refreshtoken',refreshtoken,{
-            httpOnly:true,
-            maxAge: 7 * 24 * 60* 60 * 1000
-        })
-        return res.status(200).json({
-            accesstoken
-        })
+        return res.status(200).json(tokens);
 
     } catch (error) {
+        console.error(error.message);
         return res.status(500).json({
             message:'토큰 발급 중에 오류가 발생하였습니다.'
         })
@@ -210,21 +205,14 @@ router.post('/refresh',async(req,res)=>{
 })
 
 router.post('/logout',authmiddleware,async(req,res)=>{
-    console.log(req.user);
-    const user = await User.findOne({where:{user_id:req.user.user_id}});
-    const data = await User.update({token:null},{where:{user_id:req.user.user_id}});
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
-    if(user.provider === 'kakao'){
-        const kakaoLogoutUri = 'https://kauth.kakao.com/oauth/logout'
-                                +`?client_id=${process.env.KAKAO_LOGIN_API_KEY}`
-                                +`&logout_redirect_uri=${encodeURIComponent(process.env.KAKAO_LOGOUT_REDIRECT_URI)}`
-        return res.redirect(kakaoLogoutUri);
+    try {
+        const user = await User.findOne({where:{user_id:req.user.user_id}});
+        await user.update({token:null});
+        return res.sendStatus(204);
+    } catch (error) {
+        console.error(error);
+        return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'})
     }
-    res.send(`<script>
-        alert('로그아웃 완료')
-        window.location.href = '/api/users'
-        </script>`)
 })
 
 router.get('/me',devAuthMiddleware,async(req,res)=>{

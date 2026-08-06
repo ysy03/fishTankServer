@@ -1,7 +1,7 @@
 const app = require('express');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
 const router = app.Router();
-const {ChatbotRoom,ChatbotMessage} = require('../../models');
+const {ChatbotRoom,ChatbotMessage, sequelize} = require('../../models');
 const { GenerateResponse } = require('./chatbotSetting');
 
 
@@ -47,11 +47,12 @@ router.get('/rooms/:id',devAuthMiddleware,async(req,res)=>{
 })
 
 router.post('/rooms/:id/message',devAuthMiddleware,async(req,res)=>{
+    let t;
     try {
+        t = await sequelize.transaction();
         const {id} = req.params;
         const {user_id} = req.user;
         const {message} = req.body;
-        console.log(message);
         const chatbotroom = await ChatbotRoom.findOne({
             where:{
                 chatbotroom_id:id,
@@ -64,25 +65,36 @@ router.post('/rooms/:id/message',devAuthMiddleware,async(req,res)=>{
         if(!message || !message.trim()){
             return res.status(400).json({message:'답변을 제출해 주세요'});
         }
-        const userMessage = await ChatbotMessage.create({
-            chatbotroom_id:id,
-            user_id,
-            message,
-            role:'user'
-        })
-        //제미나이 나 chatgpt에서 답글 가져온 후
         const response = await GenerateResponse(message);
-        const modelMessage = await ChatbotMessage.create({
-            chatbotroom_id:id,
-            user_id,
-            message:response,
-            role:'model'
-        })
+        if(!response){
+            const error = new Error('답변이 생성되지 않았습니다.');
+            error.status = 400;
+            throw error
+        }//답변 만들기 실패할 경우
+        
+        const [userMessage,modelMessage] = await Promise.all([
+            ChatbotMessage.create({
+                chatbotroom_id:id,
+                user_id,
+                message,
+                role:'user'
+            },{ transaction : t }),//유저 질문
+            ChatbotMessage.create({
+                chatbotroom_id:id,
+                user_id,
+                message:response,
+                role:'model'
+            },{ transaction : t})
+        ])
+        await t.commit();
         console.log(modelMessage);
-        return res.status(200).json({response,modelMessage,userMessage});
+        return res.status(200).json({response});
     } catch (error) {
+        if(t && !t.finished){
+            await t.rollback();
+        }
         console.error('챗봇 라우터 오류:', error);
-        return res.status(error.status||500).json({message:error.message&&'챗봇 답변 가져오는 것에 실패하였습니다.'})
+        return res.status(error.status||500).json({message:error.message || '챗봇 답변 가져오는 것에 실패하였습니다.'})
     }
 })
 
