@@ -9,10 +9,8 @@ module.exports = (sequelize,DataTypes) =>{
             db.User.hasMany(db.Post,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.Comment,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.CommentLike,{foreignKey:'user_id',sourceKey:'user_id'});
-            db.User.hasMany(db.Sensor,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasOne(db.UserImage,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasOne(db.ChatbotRoom,{foreignKey:'user_id',sourceKey:'user_id'});
-            db.User.hasMany(db.WaterQuality,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.Alert,{foreignKey:'user_id',sourceKey:'user_id'})
         }
     }

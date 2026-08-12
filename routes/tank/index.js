@@ -1,9 +1,10 @@
 const app = require('express');
 const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
-const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog} = require('../../models');
+const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog,Alert} = require('../../models');
 const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
+const { sendToUser, addClients, removeCLients, updateSensor } = require('./tanksse');
 
 router.get('/',devAuthMiddleware,async(req,res)=>{
     const tankData = await Tank.findAll({where:{user_id:req.user_id}});
@@ -83,67 +84,22 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
 
 
 router.post('/Sensor',async(req,res)=>{
-    const now = new Date();
-    const record_date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today+1);
     try {
-        const data = req.body;
-        if(!data){
-            return res.status(400).json({message:'온도 전달에 실패하였습니다.'})
+        const {device_id,temperature,water_quality} = req.body;
+        if(temperature == null || water_quality == null){
+            return res.status(400).json({message:'데이터 전달에 실패하였습니다.'})
         }
 
-        const tank = await Tank.findOne({where:{device_id:data.tankId||'SS501'}})
+        const tank = await Tank.findOne({where:{device_id:device_id||'SS501'}})
         if(!tank){
             return res.status(400).json({message:'저장한 어항이 없습니다.'})
         }//원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
-        const [water_quality,temperature] = await Promise.all([
-            WaterQuality.findOne({where:{device_id:tank.device_id,record_date}}),
-            Sensor.findOne({where:{device_id:tank.device_id,record_date}})
-        ])
-        if(water_quality){
-            await water_quality.update({
-                water_quality:data.water_quality,
-                count:water_quality.count+1,
-                waterquality_sum:water_quality.waterquality_sum+data.water_quality,
-                waterquality_avg:(water_quality.waterquality_sum+data.water_quality) / (water_quality.count+1)
-            })
-        }else{
-        await WaterQuality.create({
-            device_id:tank.device_id,
-            user_id:tank.user_id,
-            water_quality:data.water_quality,
-            record_date,
-            count:1,
-            waterquality_sum:data.water_quality,
-            waterquality_avg:data.water_quality
-        })
-        }//수질 저장
-        if(temperature){
-            await temperature.update({
-                temperature:data.temperature,
-                max_temperature: temperature.max_temperature < data.temperature ? data.temperature : temperature.max_temperature,
-                max_temperature_at: temperature.max_temperature < data.temperature ? now : temperature.max_temperature_at,
-                min_temperature:temperature.min_temperature > data.temperature ? data.temperature : temperature.min_temperature,
-                min_temperature_at:temperature.min_temperature > data.temperature ? now : temperature.min_temperature_at,
-                count : temperature.count + 1,
-                temp_sum : temperature.temp_sum + data.temperature,
-                temp_avg: (temperature.temp_sum + data.temperature) / (temperature.count+1)
-            })
-        }else{
-            await Sensor.create({
-                device_id:tank.device_id,
-                user_id:tank.user_id,
-                record_date,
-                temperature:data.temperature,
-                max_temperature:data.temperature,
-                max_temperature_at:now,
-                min_temperature:data.temperature,
-                min_temperature_at:now,
-                count:1,
-                temp_sum:data.temperature,
-                temp_avg:data.temperature
-
-            })
-        }
+        const senseData = updateSensor(device_id,temperature,water_quality);
+        sendToUser(device_id,senseData);
         return res.sendStatus(204);  
     } catch (error) {
         console.error(error.message);
@@ -178,54 +134,22 @@ router.get('/logdata',devAuthMiddleware,async(req,res)=>{
 router.get('/data',devAuthMiddleware,async (req,res) => {
     try {
         const {device_id='SS501'} = req.query;
-        /*const today = new Date();
-        today.setHours(0,0,0,0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate()+1);*/
         const tank = await Tank.findOne({where:{
             device_id
         }})
         if(!tank){
             return res.status(400).json({message:'저장한 기기를 발견하지 못했습니다.'})
         }
-        const [temp,waterQuality] = await Promise.all([
-            Sensor.findOne({where:{device_id},order:[['record_date','DESC']]}),
-            WaterQuality.findOne({where:{device_id},order:[['record_date','DESC']]})
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
 
-        ])
-        if(!temp || !waterQuality){
-            return res.status(400).json({message:'최근에 기록한 정보가 없습니다.'})
-        }
-        let tempStatue;
-        let waterQuailtyStatus;
-        //const fishActivity = await axios(`http://{서버주소}/api/ai/activity/result`)
-        if(temp.temperature<tank.min_temp){
-            tempStatue = 'dangerous low'
-            console.log('위험 너무 차가워요');
-        }else if(temp.temperature < tank.min_temp + 2){
-            tempStatue = 'Warning low'
-            console.log('주의 온도가 낮아요')
-        }else if(tank.max_temp < temp.temperature){
-            tempStatue = 'dangerous hot'
-            console.log('위험 너무 뜨거워요')
-        }else if(tank.max_temp -2 < temp.temperature){
-            tempStatue = 'Warning hot'
-            console.log('주의 온도가 높아요')
-        }else{
-            tempStatue = 'normal'
-            console.log('온도가 정상이네요')
-        }//온도
-        if(waterQuality.water_quality < tank.normal_waterquality){
-            waterQuailtyStatus = 'clear'
-            console.log('꺠끗하네요')
-        }else if(waterQuality.water_quality < tank.warning_waterquality){
-            waterQuailtyStatus = 'middle'
-            console.log('수질이 탁하네요')
-        }else{
-            waterQuailtyStatus = 'very dirty'
-            console.log('너무 더러워요');
-        }
-        return res.json({temp,waterQuality,tempStatue,waterQuailtyStatus});
+        res.flushHeaders();
+        addClients(device_id,res);
+
+        req.on('close',()=>{
+            removeCLients(device_id,res);
+        })
     } catch (error) {
         console.error(error.message)
         return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'});

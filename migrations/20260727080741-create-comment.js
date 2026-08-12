@@ -21,7 +21,7 @@ module.exports = {
       },
       user_id:{
         type:Sequelize.INTEGER,
-        allowNull:true,
+        allowNull:false,
         references:{
           model:'user',
           key:'user_id'
@@ -30,10 +30,12 @@ module.exports = {
       },
       content:{
         type:Sequelize.TEXT,
-        allowNull:true
+        allowNull:false
       },
       parent_id:{
         type:Sequelize.INTEGER,
+        allowNull:true,
+        defaultValue:null,
         references:{
           model:'comment',
           key:'comment_id'
