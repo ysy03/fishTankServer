@@ -11,7 +11,6 @@ module.exports = (sequelize,DataTypes) =>{
             db.User.hasMany(db.CommentLike,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasOne(db.UserImage,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasOne(db.ChatbotRoom,{foreignKey:'user_id',sourceKey:'user_id'});
-            db.User.hasMany(db.Alert,{foreignKey:'user_id',sourceKey:'user_id'})
         }
     }
 
@@ -25,7 +24,7 @@ module.exports = (sequelize,DataTypes) =>{
             ,
             nickname:{
                 type:DataTypes.STRING,
-                allowNull:false,
+                allowNull:true,
                 unique:true
             },
             provider:{

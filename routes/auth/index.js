@@ -125,7 +125,8 @@ router.get('/google/callback',async(req,res)=>{
                 },
             }
         )
-        const accessToken = token.data.access_token
+        const accessToken = token.data.access_token;
+        console.log(token);
         const userData = await axios.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
             {
@@ -155,7 +156,8 @@ router.get('/google/callback',async(req,res)=>{
 
         return res.json({accesstoken,refreshtoken});  
     } catch (error) {
-        res.render('error',{message:'구글 로그인이 실패하였습니다.'})
+        console.error(error.message);
+        return res.render('error',{message:'구글 로그인이 실패하였습니다.'})
     }
 })
 
