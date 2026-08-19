@@ -6,7 +6,7 @@ var logger = require('morgan');
 require('dotenv').config()
 const {sequelize} = require('./models');
 var indexRouter = require('./routes/index');
-const startSensorSimulation = require('./Iot/sensorSimulation');
+const startSensorSimulation = require('./routes/tank/schedual');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
@@ -18,7 +18,7 @@ sequelize.sync({force:false})
     .catch((err)=>console.error(err));
 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: true,
     credentials: true
 }));
   
@@ -26,7 +26,7 @@ app.use(cors({
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-//startSensorSimulation()
+startSensorSimulation()
 
 app.use(logger('dev'));
 app.use(express.json());

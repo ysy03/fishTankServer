@@ -2,9 +2,10 @@ const app = require('express');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
 const {Tank,Daily,Feederlog,Waterchangelog} = require('../../models');
 const { Op, col,fn } = require('sequelize');
+const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
 
-router.get('/',devAuthMiddleware, async(req,res)=>{
+router.get('/',authMiddleware, async(req,res)=>{
     try {
         const {day,device_id = 'SS501'} = req.query;
         const selected_day = new Date(day);

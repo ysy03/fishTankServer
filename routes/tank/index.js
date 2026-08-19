@@ -84,25 +84,18 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
 
 
 router.post('/Sensor',async(req,res)=>{
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today+1);
     try {
-        const {device_id,temperature,water_quality} = req.body;
+        const {device_id='SS501',temperature,water_quality} = req.body;
         if(temperature == null || water_quality == null){
             return res.status(400).json({message:'데이터 전달에 실패하였습니다.'})
         }
 
-        const tank = await Tank.findOne({where:{device_id:device_id||'SS501'}})
-        if(!tank){
-            return res.status(400).json({message:'저장한 어항이 없습니다.'})
-        }//원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
+        //원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
         const senseData = updateSensor(device_id,temperature,water_quality);
         sendToUser(device_id,senseData);
         return res.sendStatus(204);  
     } catch (error) {
-        console.error(error.message);
+        console.error(error);
         return res.status(error.status||500).json({message:error.message||'서버에 에러가 발생하였습니다.'})
     }
 
