@@ -47,6 +47,8 @@ module.exports = (sequelize,DataTypes)=>{
         }
     },{
         sequelize,
+        tableName:'daily',
+        modelName:'Daily',
         timestamps:false,
     })
 

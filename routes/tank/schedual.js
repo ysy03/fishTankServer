@@ -4,7 +4,7 @@ const {sensorState, resetSensorState} = require('./tanksse');
 const cron = require('node-cron');
 
 module.exports = () =>{
-    cron.schedule('*/3 * * * *' , async()=>{
+    cron.schedule('* * * * *' , async()=>{
         try {
             const sensorData = [];
             for(const [device_id,state] of sensorState){
@@ -48,7 +48,7 @@ module.exports = () =>{
         timezone: 'Asia/Seoul'
     })
 
-    cron.schedule('5 0 * * *',async ()=>{
+    cron.schedule('*/5 * * * *',async ()=>{
         try {
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -85,6 +85,7 @@ module.exports = () =>{
                         }),
         
                     ])
+                    console.log(temp_data,waterquality_data);
                     if( (temp_data.temp_max == null ||
                         temp_data.temp_min == null||
                         temp_data.temp_avg == null

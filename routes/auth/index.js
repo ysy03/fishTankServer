@@ -73,7 +73,7 @@ router.post('/login',async(req,res)=>{
         if(!exUser){
             const NewUser = await User.create({
                 nickname:null,
-                provider:snsId,
+                provider:provider,
                 sns_id:email
             })
             exUser = NewUser
@@ -175,31 +175,7 @@ router.post('/profile',authMiddleware,upload.single('image'),async(req,res)=>{
         const image = req.file;
         console.log(image);
         let imageurl = null;
-        if(image){
-            imageurl = `/uploads/user/${image.filename}`
-            const userImage = await UserImage.findOne({
-                where:{
-                    user_id:req.user.user_id
-                }
-            })
-            if(userImage){
-                fs.unlink(path.join(__dirname,'../..',userImage.Image_url),(err)=>{
-                    if (err && err.code !== 'ENOENT') {
-                        console.error(err);
-                    }
-                })
-                await userImage.update({
-                    Image_url:imageurl
-                })
-            }else{
-                await UserImage.create({
-                    user_id:req.user.user_id,
-                    Image_url:imageurl
-                })
-            }
-        }
-
-        if(nickname && nickname !== ''){
+        if(nickname && nickname.trim() !== ''){
             const newNickname = nickname.trim();
             console.log(newNickname);
             const exUser = await User.findOne({where:{nickname:newNickname}});
@@ -209,17 +185,43 @@ router.post('/profile',authMiddleware,upload.single('image'),async(req,res)=>{
                 throw error
             }
             
-            await User.update({
+            if(!exUser){
+                await User.update({
                 nickname:newNickname
-            },{
+                },{
+                    where:{
+                        user_id:req.user.user_id
+                    }
+                })
+            }
+        }
+        
+        if(image){
+            imageurl = `/uploads/user/${image.filename}`
+            const userImage = await UserImage.findOne({
                 where:{
                     user_id:req.user.user_id
                 }
             })
+            if(userImage){
+                await userImage.update({
+                    Image_url:imageurl
+                })
+                fs.unlink(path.join(__dirname,'../..',userImage.Image_url),(err)=>{
+                    if (err && err.code !== 'ENOENT') {
+                        console.error(err);
+                    }
+                })
+            }else{
+                await UserImage.create({
+                    user_id:req.user.user_id,
+                    Image_url:imageurl
+                })
+            }
         }
-        
+
        
-        return res.status(200).json({image:imageurl || '/uploads/user//default.png'});
+        return res.status(200).json({success:true});
     } catch (error) {
         return res.status(error.status||500).json({message:error.message||'서버가 오류가 발생하였습니다.'})
     }

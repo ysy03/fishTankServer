@@ -76,7 +76,7 @@ async function inspectTemp(device_id, type, current_state, tempLevel) {
     if (current_state === 'dangerous') {
 
         // 이미 같은 위험 상태라면 중복 생성 안 함
-        if (state.temp_state === tempLevel) {
+        if (state.temp_state === current_state) {
             state.temp_pending_count = 0;
             return;
         }
@@ -91,7 +91,7 @@ async function inspectTemp(device_id, type, current_state, tempLevel) {
             }
         });
 
-        state.temp_state = tempLevel;
+        state.temp_state = current_state;
         state.temp_pending_count = 0;
         sendSSE(device_id,{
             type:'warning',

@@ -31,15 +31,20 @@ router.get('/list',async (req,res) => {
 
         let datas = await Post.findAll({
             where,
-            attributes:['post_id','title','content','fish_type'],
-            include:{model:User,attributes:['nickname']},
+            attributes:['post_id','title','content','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
+            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],required:false}],
+            group:[
+                'Post.post_id',
+                'User.user_id'
+            ],
             order: [['created_at', 'DESC']]
         });
 
         console.log(datas);
         res.json({selectedFishTypes,datas,keyword});
     } catch (error) {
-        return res.json({message:'게시글을 불러오지 못했습니다.'})
+        console.error(error);
+        return res.status(error.status||500).json({message:'게시글을 불러오지 못했습니다.'})
     }
 })
 
@@ -309,6 +314,7 @@ router.post('/comment',devAuthMiddleware,async(req,res)=>{
         })
         return res.status(200).json(updatedData);
     } catch (error) {
+        console.log(error);
         res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'})
     }
 })
