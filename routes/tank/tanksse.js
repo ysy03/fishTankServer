@@ -33,6 +33,7 @@ function sendToUser(device_id,data){
         console.log('저장한 유저 없음')
         return;
     }
+    console.log("전송 데이터:", data);
     const message = `data: ${JSON.stringify(data)}\n\n`
 
     userClients.forEach(client => {

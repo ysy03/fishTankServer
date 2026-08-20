@@ -31,8 +31,9 @@ router.get('/list',async (req,res) => {
 
         let datas = await Post.findAll({
             where,
-            attributes:['post_id','title','fish_type'],
-            include:{model:User,attributes:['nickname']}
+            attributes:['post_id','title','content','fish_type'],
+            include:{model:User,attributes:['nickname']},
+            order: [['created_at', 'DESC']]
         });
 
         console.log(where);
@@ -221,9 +222,19 @@ router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,r
         if(data.user_id !== req.user.user_id){
             throw new Error('해당 페이지의 권한이 없습니다.')
         }
-        if(!Array.isArray(deleteImageId)){
+        if (typeof deleteImageId === "string") {
+        try {
+            deleteImageId = JSON.parse(deleteImageId);
+        } catch (e) {
+            deleteImageId = [Number(deleteImageId)];
+        }
+        }
+
+        if (!Array.isArray(deleteImageId)) {
             deleteImageId = [deleteImageId];
         }
+
+        deleteImageId = deleteImageId.map(Number);
         const currentImageCount = await Image.count({
             where:{post_id:id}
         })

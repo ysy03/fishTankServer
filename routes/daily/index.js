@@ -6,7 +6,7 @@ const router = app.Router();
 
 router.get('/',devAuthMiddleware, async(req,res)=>{
     try {
-        const {day,device_id = 'SS501'} = req.query;
+        const {day,device_id = 'TEST'} = req.query;
         const {user_id} = req.user;//유저 정보 가져옴
         if(!day){
             return res.status(400).json({message:'날짜를 입력해주세요'})
