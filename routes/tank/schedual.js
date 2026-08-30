@@ -48,7 +48,7 @@ module.exports = () =>{
         timezone: 'Asia/Seoul'
     })
 
-    cron.schedule('*/5 * * * *',async ()=>{
+    cron.schedule('*/3 * * * *',async ()=>{
         try {
             const today = new Date();
             today.setHours(0,0,0,0);
