@@ -31,12 +31,8 @@ router.get('/list',async (req,res) => {
 
         let datas = await Post.findAll({
             where,
-            attributes:['post_id','title','content','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
-            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],required:false}],
-            group:[
-                'Post.post_id',
-                'User.user_id'
-            ],
+            attributes:['post_id','title','content','fish_type'],
+            include:{model:User,attributes:['nickname']},
             order: [['created_at', 'DESC']]
         });
 
