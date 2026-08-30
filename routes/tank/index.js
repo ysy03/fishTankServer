@@ -86,12 +86,8 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
 
 //IOT 센서 데이터 보냄
 router.post('/Sensor',async(req,res)=>{
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today+1);
     try {
-        const {device_id,temperature,water_quality} = req.body;
+        const {device_id='SS501',temperature,water_quality} = req.body;
         if(temperature == null || water_quality == null){
             return res.status(400).json({message:'데이터 전달에 실패하였습니다.'})
         }
@@ -104,7 +100,7 @@ router.post('/Sensor',async(req,res)=>{
         sendToUser(device_id,senseData);
         return res.sendStatus(204);  
     } catch (error) {
-        console.error(error.message);
+        console.error(error);
         return res.status(error.status||500).json({message:error.message||'서버에 에러가 발생하였습니다.'})
     }
 

@@ -13,14 +13,22 @@ module.exports = {
       allowNull:false,
       defaultValue:Sequelize.literal('CURRENT_TIMESTAMP')
     })
-    await queryInterface.removeColumn('sensor','user_id');
+    await queryInterface.removeColumn('waterquality','user_id');
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.removeColumn(
-        'waterquality',
-        'created_at'
+    await queryInterface.removeColumn('waterquality','created_at'
     );
+
+     await queryInterface.addColumn('waterquality','user_id',{
+        type:Sequelize.INTEGER,
+        allowNull:false,
+        references:{
+            model:'user',
+            key:'user_id'
+        },
+        onDelete:'CASCADE'
+        })
 
     await queryInterface.addColumn('waterquality', 'count', {
         type: Sequelize.INTEGER,
@@ -47,6 +55,5 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
     });
-    await queryInterface.removeColumn('sensor','user_id');
 }
 };

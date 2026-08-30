@@ -36,10 +36,11 @@ router.get('/list',async (req,res) => {
             order: [['created_at', 'DESC']]
         });
 
-        console.log(where);
+        console.log(datas);
         res.json({selectedFishTypes,datas,keyword});
     } catch (error) {
-        return res.json({message:'게시글을 불러오지 못했습니다.'})
+        console.error(error);
+        return res.status(error.status||500).json({message:'게시글을 불러오지 못했습니다.'})
     }
 })
 
@@ -79,7 +80,7 @@ router.get('/mypost/data',devAuthMiddleware,async(req,res)=>{
 
 
 //게시글 작성 관련
-router.post('/posts',devAuthMiddleware,upload.array('images',4),async (req,res) => {
+router.post('/posts',authMiddleware,upload.array('images',4),async (req,res) => {
     try {
         const {title,fish_type,content} = req.body;
         const id = req.user.user_id;
@@ -109,7 +110,7 @@ router.post('/posts',devAuthMiddleware,upload.array('images',4),async (req,res) 
 
 //개인 게시글 정보
 
-router.get('/posts/:id',devAuthMiddleware,async (req,res) => {
+router.get('/posts/:id',authMiddleware,async (req,res) => {
     try {
         const {id} = req.params;
         const {user_id} = req.user;
@@ -309,6 +310,7 @@ router.post('/comment',devAuthMiddleware,async(req,res)=>{
         })
         return res.status(200).json(updatedData);
     } catch (error) {
+        console.log(error);
         res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'})
     }
 })

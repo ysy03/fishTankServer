@@ -24,54 +24,56 @@ router.get('/',async(req,res)=>{
     res.render('index',{title:'hello'});
 })
 
-router.get('/kakao',(req,res)=>{
-    console.log(process.env.KAKAO_LOGIN_REDIRECT_URI)
-    const kakaoURI = `https://kauth.kakao.com/oauth/authorize?`+
-    `client_id=${process.env.KAKAO_LOGIN_API_KEY}`+
-    `&redirect_uri=${encodeURIComponent(process.env.KAKAO_LOGIN_REDIRECT_URI)}` +
-    `&response_type=code`;
-    console.log(process.env.KAKAO_LOGIN_REDIRECT_URI)
-    res.redirect(kakaoURI);
-})
 
-
-router.get('/kakao/callback',async(req,res)=>{
+router.post('/login',async(req,res)=>{
     try {
-        const {code} = req.query;
+        const {accesstoken:givenAccessToken,provider} = req.body;
+        console.log(provider);
+        console.log(givenAccessToken)
+        let userData;
+        let email;
 
-        const token = await axios.post(
-            "https://kauth.kakao.com/oauth/token",
-            new URLSearchParams({
-                grant_type: "authorization_code",
-                client_id: process.env.KAKAO_LOGIN_API_KEY,
-                redirect_uri: process.env.KAKAO_LOGIN_REDIRECT_URI,
-                code,
-            }),
-            {
-                headers: {
-                "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-                },
-            }
-        )
+        if (!givenAccessToken || !provider) {
+            return res.status(400).json({
+                success: false,
+                message: 'accessToken 또는 provider가 없습니다.'
+            });
+        }
 
-        const accessToken = token.data.access_token;
-
-        const userData = await axios.get(
-            "https://kapi.kakao.com/v2/user/me",
-            {
-                headers:{
-                    Authorization: `Bearer ${accessToken}`
+        if(provider == 'kakao'){
+            userData = await axios.get(
+                "https://kapi.kakao.com/v2/user/me",
+                {
+                    headers:{
+                        Authorization: `Bearer ${givenAccessToken}`
+                    }
                 }
-            }
-        )
+            )
 
-        const email = userData.data.kakao_account.email;
-        
-        let exUser = await User.findOne({where:{sns_id:email,provider:'kakao'}});
+            email = userData.data.kakao_account.email;
+        }else if(provider == 'google'){
+            console.log(givenAccessToken);
+            userData = await axios.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                {
+                    headers:{
+                        Authorization:`Bearer ${givenAccessToken}`
+                    }
+                }
+            )
+            email = userData.data.email;
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: '지원하지 않는 로그인 방식입니다.'
+            });
+        }
+
+        let exUser = await User.findOne({where:{sns_id:email,provider}});
         if(!exUser){
             const NewUser = await User.create({
                 nickname:null,
-                provider:'kakao',
+                provider:provider,
                 sns_id:email
             })
             exUser = NewUser
@@ -82,95 +84,28 @@ router.get('/kakao/callback',async(req,res)=>{
             token:refreshtoken
         },{where:{user_id:exUser.user_id}})
 
-
-        return res.json({accesstoken,refreshtoken}); 
+        const exNickname = exUser?.nickname != null;
+        return res.status(200).json({exNickname,accesstoken,refreshtoken}); 
     } catch (error) {
         console.log(error);
         return res.status(error.status || 500).json({
-            success:false,
             message: error.message
         })
     }
     
 })
 
-router.get('/google',(req,res)=>{
-    const googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth";
-
-    const params = new URLSearchParams({
-        client_id: process.env.GOOGLE_LOGIN_CLIENT_ID,
-        redirect_uri: process.env.GOOGLE_LOGIN_REDIRECT_URI,
-        response_type: "code",
-        scope: "email profile",
-    });
-
-    res.redirect(`${googleAuthUrl}?${params.toString()}`);
-})
-
-router.get('/google/callback',async(req,res)=>{
-    try {
-        const {code} = req.query;
-        const token = await axios.post(
-            "https://oauth2.googleapis.com/token",
-            new URLSearchParams({
-                grant_type: "authorization_code",
-                client_secret:process.env.GOOGLE_CLIENT_SECRET,
-                client_id: process.env.GOOGLE_LOGIN_CLIENT_ID,
-                redirect_uri: process.env.GOOGLE_LOGIN_REDIRECT_URI,
-                code,
-            }),
-            {
-                headers: {
-                "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-                },
-            }
-        )
-        const accessToken = token.data.access_token
-        const userData = await axios.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            {
-                headers:{
-                    Authorization:`Bearer ${accessToken}`
-                }
-            }
-        )
-        const {email} = userData.data;
-        let exUser = await User.findOne({where:{sns_id:email,provider:'google'}});
-        if(!exUser){
-            const newUser = await User.create(
-                {
-                    provider:'google',
-                    sns_id:email
-                }
-            )
-            exUser = newUser
-            
-        }
-        const {accesstoken,refreshtoken} = createToken(exUser.user_id);
-
-
-        await User.update({
-            token:refreshtoken
-        },{where:{user_id:exUser.user_id}})
-
-        return res.json({accesstoken,refreshtoken});  
-    } catch (error) {
-        res.render('error',{message:'구글 로그인이 실패하였습니다.'})
-    }
-})
-
-
 router.post('/refresh',async(req,res)=>{
     try {
-        const {refreshtoken} = req.body
-        if(!refreshtoken){
+        const {refreshtoken:sendrefreshtoken} = req.body
+        if(!sendrefreshtoken){
             return res.status(401).json({
                 message:"리프레쉬 토큰이 없습니다."
             })
         }
         let decode;
         try {
-            decode = jwt.verify(refreshtoken,process.env.JWT_REFRESH);
+            decode = jwt.verify(sendrefreshtoken,process.env.JWT_REFRESH);
         } catch (error) {
             return res.status(401).json({
                 code: 'INVALID_REFRESH_TOKEN',
@@ -183,18 +118,18 @@ router.post('/refresh',async(req,res)=>{
                 message:'유저가 존재하지 않습니다.'
             })
         }
-        if(user.token !== refreshtoken){
+        if(user.token !== sendrefreshtoken){
             return res.status(401).json({
                 code: 'REFRESH_TOKEN_MISMATCH',
                 message: '등록되지 않은 리프레시 토큰입니다.'
             });
         }
 
-        const tokens = createToken(user.user_id);
+        const {accesstoken,refreshtoken} = createToken(user.user_id);
         await user.update({
             token:tokens.refreshtoken
         })
-        return res.status(200).json(tokens);
+        return res.status(200).json({accesstoken,refreshtoken});
 
     } catch (error) {
         console.error(error.message);
@@ -215,15 +150,17 @@ router.post('/logout',authmiddleware,async(req,res)=>{
     }
 })
 
-router.get('/me',devAuthMiddleware,async(req,res)=>{
+router.get('/myinfo',authMiddleware,async(req,res)=>{
     try {
         const {user_id} = req.user;
         console.log(user_id);
         const user = await User.findOne({where:{user_id}});
         const image = await UserImage.findOne({where:{user_id}});
-        return res.status(200).json({user,image:image??{
-            Image_url:'/uploads/user/default.png'
-        }});   
+        const ImageUrl = image ? 
+            `${req.protocol}://${req.get('host')}${image.Image_url}`:
+            `${req.protocol}://${req.get('host')}/uploads/user/default.png`;
+        console
+        return res.status(200).json({user,image:ImageUrl});   
     } catch (error) {
         return res.status(500).json({
             message:'유저 정보를 불러오기 실패하였습니다.'
@@ -232,37 +169,13 @@ router.get('/me',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-router.post('/profile',devAuthMiddleware,upload.single('image'),async(req,res)=>{
+router.post('/profile',authMiddleware,upload.single('image'),async(req,res)=>{
     try {
         const {nickname} = req.body;
         const image = req.file;
         console.log(image);
         let imageurl = null;
-        if(image){
-            imageurl = `/uploads/user/${image.filename}`
-            const userImage = await UserImage.findOne({
-                where:{
-                    user_id:req.user.user_id
-                }
-            })
-            if(userImage){
-                fs.unlink(path.join(__dirname,'../..',userImage.Image_url),(err)=>{
-                    if (err && err.code !== 'ENOENT') {
-                        console.error(err);
-                    }
-                })
-                await userImage.update({
-                    Image_url:imageurl
-                })
-            }else{
-                await UserImage.create({
-                    user_id:req.user.user_id,
-                    Image_url:imageurl
-                })
-            }
-        }
-
-        if(nickname && nickname !== ''){
+        if(nickname && nickname.trim() !== ''){
             const newNickname = nickname.trim();
             console.log(newNickname);
             const exUser = await User.findOne({where:{nickname:newNickname}});
@@ -272,17 +185,43 @@ router.post('/profile',devAuthMiddleware,upload.single('image'),async(req,res)=>
                 throw error
             }
             
-            await User.update({
+            if(!exUser){
+                await User.update({
                 nickname:newNickname
-            },{
+                },{
+                    where:{
+                        user_id:req.user.user_id
+                    }
+                })
+            }
+        }
+        
+        if(image){
+            imageurl = `/uploads/user/${image.filename}`
+            const userImage = await UserImage.findOne({
                 where:{
                     user_id:req.user.user_id
                 }
             })
+            if(userImage){
+                await userImage.update({
+                    Image_url:imageurl
+                })
+                fs.unlink(path.join(__dirname,'../..',userImage.Image_url),(err)=>{
+                    if (err && err.code !== 'ENOENT') {
+                        console.error(err);
+                    }
+                })
+            }else{
+                await UserImage.create({
+                    user_id:req.user.user_id,
+                    Image_url:imageurl
+                })
+            }
         }
-        
+
        
-        return res.status(200).json({image:imageurl || '/uploads/user//default.png'});
+        return res.status(200).json({success:true});
     } catch (error) {
         return res.status(error.status||500).json({message:error.message||'서버가 오류가 발생하였습니다.'})
     }
@@ -295,7 +234,7 @@ const createToken = (id) => {
     const accesstoken = jwt.sign({
         user_id:id
     },process.env.JWT_SECRET,{
-        expiresIn:'1m'
+        expiresIn:'30m'
     })
     const refreshtoken = jwt.sign({
         user_id:id

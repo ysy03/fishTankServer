@@ -5,6 +5,8 @@ const {User} = require('../../models');
 const authMiddleware = async(req,res,next)=>{
     const authorization = req.headers.authorization;
     if(!authorization){
+        console.log(req.headers);
+        console.log('여기서 문제');
         return res.status(401).json({
             code: 'TOKEN_REQUIRED',
             message: '로그인이 필요합니다.'
@@ -13,7 +15,9 @@ const authMiddleware = async(req,res,next)=>{
 
     const [type,token] = authorization.split(" ");
     if(type !== 'Bearer'||!token){
+        console.log('요기서 문제');
         return res.status(401).json({
+            code: 'INVALID_AUTHORIZATION_HEADER',
             message:'잘못된 인증이 들어왔습니다.'
         })
     }
@@ -22,6 +26,7 @@ const authMiddleware = async(req,res,next)=>{
         req.user = user;
         return next();
     } catch (error) {
+        console.log('저기서 문제');
         if (error.name === "TokenExpiredError") {
             return res.status(401).json({
                 code: 'ACCESS_TOKEN_EXPIRED',
