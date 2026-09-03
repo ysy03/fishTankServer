@@ -262,9 +262,9 @@ async function loadTankCache(){
             })
             alertState.set(tank.device_id,{
                 temp_state:'normal',
+                temp_pending_count:0,
                 waterquality_state:'normal',
-                feed_state:'normal',
-                waterchange_state:'normal'
+                wq_pending_count:0
             })
         }
     } catch (error) {
@@ -317,6 +317,8 @@ module.exports = {
     removeCLients,
     sendToUser,
     updateSensor,
+    updateTankcache,
     resetSensorState,
+    sendSSE,
     sensorState
 }

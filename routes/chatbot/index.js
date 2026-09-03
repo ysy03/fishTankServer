@@ -3,9 +3,10 @@ const devAuthMiddleware = require('../auth/devauthMiddleware');
 const router = app.Router();
 const {ChatbotRoom,ChatbotMessage, sequelize} = require('../../models');
 const { GenerateResponse } = require('./chatbotSetting');
+const authMiddleware = require('../auth/authMiddleware');
 
 
-router.post('/',devAuthMiddleware,async (req,res)=>{
+router.post('/',authMiddleware,async (req,res)=>{
     try {
         const {user_id} = req.user;
         let chatroom = await ChatbotRoom.findOne({where:{user_id}});
@@ -18,7 +19,7 @@ router.post('/',devAuthMiddleware,async (req,res)=>{
     }
 })
 
-router.get('/rooms/:id',devAuthMiddleware,async(req,res)=>{
+router.get('/rooms/:id',authMiddleware,async(req,res)=>{
     try {
         const {id} = req.params;
         const {user_id} = req.user;
@@ -88,7 +89,7 @@ router.post('/rooms/:id/message',devAuthMiddleware,async(req,res)=>{
         ])
         await t.commit();
         console.log(modelMessage);
-        return res.status(200).json({response});
+        return res.status(200).json({message:response});
     } catch (error) {
         if(t && !t.finished){
             await t.rollback();

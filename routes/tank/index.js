@@ -4,7 +4,7 @@ const router = app.Router();
 const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog,Alert} = require('../../models');
 const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
-const { sendToUser, addClients, removeCLients, updateSensor } = require('./tanksse');
+const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache } = require('./tanksse');
 
 router.get('/',devAuthMiddleware,async(req,res)=>{
     const tankData = await Tank.findAll({where:{user_id:req.user_id}});
@@ -75,6 +75,13 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
             warning_waterquality,
             tank_name
         })
+        updateTankcache({
+            devce_id,
+            min_temp,
+            max_temp,
+            normal_waterquality,
+            warning_waterquality
+        })
         return res.sendStatus(204)
     } catch (error) {
         console.error(error.message);
@@ -102,7 +109,7 @@ router.post('/Sensor',async(req,res)=>{
     
 })
 
-router.get('/logdata',devAuthMiddleware,async(req,res)=>{
+router.get('/logdata',authMiddleware,async(req,res)=>{
     try {
         const {device_id} = req.query;
         const today =new Date();
@@ -152,12 +159,12 @@ router.get('/data',devAuthMiddleware,async (req,res) => {
 
 
 router.post('/feed',async(req,res)=>{
-    const data = req.body;
+    const {device_id} = req.body;
     const status = Math.random() > 0.3;
     try {
         const tank = await Tank.findOne({
             where:{
-                device_id:data.deviceId||"SS501"//SS501은 더미데이터이므로 무시 가능
+                device_id:device_id||"SS501"//SS501은 더미데이터이므로 무시 가능
             }
         })
         if(!tank){
@@ -168,7 +175,7 @@ router.post('/feed',async(req,res)=>{
             device_id:tank.device_id,
             status
         })
-        return res.status(201).json({Data})
+        return res.status(201).json(Data)
 
     } catch (error) {
         console.error('error');
@@ -176,15 +183,15 @@ router.post('/feed',async(req,res)=>{
     }
 })
 
-router.post('/waterchange',devAuthMiddleware,async(req,res)=>{
+router.post('/waterchange',authMiddleware,async(req,res)=>{
     try {
-        const data = req.body;
+        const {device_id} = req.body;
         const StartDate = new Date();
         await new Promise(resolve => setTimeout(resolve, 5000));
 
         const status = Math.random() > 0.7 ? true : false;
         const date = await Waterchangelog.create({
-            device_id:data.device_Id||'SS501',
+            device_id:device_id||'SS501',
             status,
             started_at: StartDate,
             ended_at:new Date()
