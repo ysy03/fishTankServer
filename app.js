@@ -6,7 +6,7 @@ var logger = require('morgan');
 require('dotenv').config()
 const {sequelize} = require('./models');
 var indexRouter = require('./routes/index');
-const startSensorSimulation = require('./Iot/sensorSimulation');
+const startSensorSimulation = require('./routes/tank/schedual');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
@@ -18,7 +18,7 @@ sequelize.sync({force:false})
     .catch((err)=>console.error(err));
 
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: true,
     credentials: true
 }));
   
@@ -26,7 +26,7 @@ app.use(cors({
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-//startSensorSimulation()
+startSensorSimulation()
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -48,6 +48,7 @@ app.use(function(req, res, next) {
 
 // error handler
 app.use(function(err, req, res, next) {
+  console.log('들어감');
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};

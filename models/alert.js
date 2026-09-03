@@ -6,7 +6,6 @@ const {Model} = require('sequelize')
 module.exports = (sequelize,DataTypes) =>{
     class Alert extends Model{
         static associate(db){
-            db.Alert.belongsTo(db.User,{foreignKey:'user_id',targetKey:'user_id'});
             db.Alert.belongsTo(db.Tank,{foreignKey:'device_id',targetKey:'device_id'})
         }
     }
@@ -17,15 +16,6 @@ module.exports = (sequelize,DataTypes) =>{
             primaryKey:true,
             autoIncrement:true,
             allowNull:false
-        },
-        user_id:{
-            type:DataTypes.INTEGER,
-            references:{
-                model:'user',
-                key:'user_id'
-            },
-            allowNull:false,
-            onDelete:'CASCADE'
         },
         device_id:{
             type:DataTypes.STRING,
