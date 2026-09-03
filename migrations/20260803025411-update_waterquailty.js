@@ -3,7 +3,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up (queryInterface, Sequelize) {
-    await queryInterface.addColumn('waterquality','record_date',{
+    /*await queryInterface.addColumn('waterquality','record_date',{
       type:Sequelize.DATEONLY,
       allowNull:true,
     });
@@ -20,7 +20,7 @@ module.exports = {
     await queryInterface.addColumn('waterquality','waterquality_avg',{
       type:Sequelize.DOUBLE,
       allowNull:true
-    })
+    })*/
   },
 
   async down (queryInterface, Sequelize) {

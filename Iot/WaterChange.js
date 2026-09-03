@@ -8,7 +8,7 @@ async function waterchange() {
 
     const status = Math.random() > 0.7 ? true : false;
     await Waterchangelog.create({
-        device_id:'SS501',
+        device_id:'TEST',
         status,
         started_at: StartDate,
         end_at:new Date()})
