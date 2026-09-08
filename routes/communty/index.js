@@ -142,9 +142,6 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                             ),
                             'likeCount'
                     ],
-                    [
-                        
-                    ]
                 ]
             },
             include:[
@@ -160,7 +157,9 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
         const myliked = await CommentLike.findAll({
             where:{
                 user_id,
-                [Op.in]:commentDatas.map(comment=>comment.comment_id)
+                comment_id: {
+                    [Op.in]: commentDatas.map(comment => comment.comment_id)
+                }
             },
             attributes:['comment_id'],
             raw:true
@@ -381,7 +380,7 @@ router.post('/commentLike/:id',authMiddleware,async(req,res)=>{
         let like; 
         const exLikeUser = await CommentLike.findOne({
             where:{
-                user_id:userId,
+                user_id,
                 comment_id:id
             }})
         if(exLikeUser){
@@ -401,6 +400,7 @@ router.post('/commentLike/:id',authMiddleware,async(req,res)=>{
         }
         return res.status(200).json({like});        
 ;    } catch (error) {
+        console.log(error.message);
         return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'});
     }
 })

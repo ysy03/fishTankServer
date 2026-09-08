@@ -5,7 +5,7 @@ const{Model} = require('sequelize');
 module.exports = (sequelize,DataTypes)=>{
     class Fishinfo extends Model{
         static associate(db){
-            db.Fishinfo.belongsTo(db.User,{foreignKey:'user_id',targetKey:'user_id'})
+            db.Fishinfo.belongsTo(db.Tank,{foreignKey:'device_id',targetKey:'device_id'})
         }
     }
 
@@ -24,8 +24,8 @@ module.exports = (sequelize,DataTypes)=>{
                 type:DataTypes.INTEGER,
                 allowNull:false
             },
-            user_id:{
-                type:DataTypes.INTEGER,
+            device_id:{
+                type:DataTypes.STRING,
 
             }
         },{

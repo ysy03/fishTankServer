@@ -5,7 +5,6 @@ const {Model} = require('sequelize');
 module.exports = (sequelize,DataTypes) =>{
     class User extends Model{
         static associate(db){
-            db.User.hasMany(db.Fishinfo,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.Post,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.Comment,{foreignKey:'user_id',sourceKey:'user_id'});
             db.User.hasMany(db.CommentLike,{foreignKey:'user_id',sourceKey:'user_id'});

@@ -12,7 +12,7 @@ router.get('/',devAuthMiddleware,async(req,res)=>{
 })
 
 //온도,수질 지정
-router.post('/setting',devAuthMiddleware,async(req,res)=>{
+router.post('/setting',authMiddleware,async(req,res)=>{
     try {
         const {min_temp,
             max_temp,
@@ -42,7 +42,7 @@ router.post('/setting',devAuthMiddleware,async(req,res)=>{
 })
 
 //설정 조회
-router.get('/setting/:id',devAuthMiddleware,async(req,res)=>{
+router.get('/setting/:id',authMiddleware,async(req,res)=>{
     try {
         const{id:device_id} = req.params;
         const tank = await Tank.findOne({where:{device_id}});
@@ -114,6 +114,10 @@ router.post('/Sensor',async(req,res)=>{
     
 })
 
+<<<<<<< HEAD
+=======
+//기록 조회
+>>>>>>> 49da13a ('2026-09-08')
 router.get('/logdata',authMiddleware,async(req,res)=>{
     try {
         const {device_id} = req.query;
@@ -136,9 +140,10 @@ router.get('/logdata',authMiddleware,async(req,res)=>{
 })
 
 //실시간 수온/수질 데이터 받기
-router.get('/data',devAuthMiddleware,async (req,res) => {
+router.get('/data',authMiddleware,async (req,res) => {
     try {
-        const {device_id='TEST'} = req.query;
+        console.log('들어감 2');
+        const {device_id='SS501'} = req.query;
         const tank = await Tank.findOne({where:{
             device_id
         }})
@@ -169,7 +174,11 @@ router.post('/feed',async(req,res)=>{
     try {
         const tank = await Tank.findOne({
             where:{
+<<<<<<< HEAD
                 device_id:device_id||"SS501"//SS501은 더미데이터이므로 무시 가능
+=======
+                device_id:data.deviceId||"SS501"//SS501은 더미데이터이므로 무시 가능
+>>>>>>> 49da13a ('2026-09-08')
             }
         })
         if(!tank){
@@ -188,6 +197,10 @@ router.post('/feed',async(req,res)=>{
     }
 })
 
+<<<<<<< HEAD
+=======
+//환수
+>>>>>>> 49da13a ('2026-09-08')
 router.post('/waterchange',authMiddleware,async(req,res)=>{
     try {
         const {device_id} = req.body;

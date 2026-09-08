@@ -5,38 +5,39 @@ const { Op, col,fn } = require('sequelize');
 const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
 
-router.get('/',authMiddleware, async(req,res)=>{
+router.get('/:date',authMiddleware, async(req,res)=>{
     try {
-        const {day,device_id = 'SS501'} = req.query;
-        const selected_day = new Date(day);
-        selected_day.setHours(0,0,0,0);
+        const {date} = req.params;
         const {user_id} = req.user;//유저 정보 가져옴
-        if(!day){
+        if(!date){
             return res.status(400).json({message:'날짜를 입력해주세요'})
         }
         const today = new Date();
         today.setHours(0,0,0,0);
-        if(selected_day >= today){
+        if(date >= today){
             return res.status(200).json({exist:false,message:'아직 기록한 적이 없는 날짜입니다.'})
         }
         const tank = await Tank.findOne({
             where:{
                 user_id,
-                device_id
             }
         })
         if(!tank){
             return res.status(403).json({message:'유저가 등록한 어항이 아닙니다.'})
         }
-        const next_day = new Date(selected_day);
+        const this_day = new Date(date);
+        const next_day = new Date(date);
+        this_day.setHours(0,0,0,0);
         next_day.setDate(next_day.getDate()+1);
         next_day.setHours(0,0,0,0);//날짜 지정
+        console.log(this_day)
+        console.log(next_day);
         const[daily,Feeding,waterChange] = await Promise.all([
             Daily.findOne({
                 where:{
-                    device_id,
-                    created_at:{
-                        [Op.gte]:selected_day,
+                    device_id:tank.device_id,
+                    daily:{
+                        [Op.gte]:this_day,
                         [Op.lt]:next_day
                     }
                 }
@@ -44,9 +45,9 @@ router.get('/',authMiddleware, async(req,res)=>{
             ,//수질
             Feederlog.findAll({
                 where:{
-                    device_id,
+                    device_id:tank.device_id,
                     feed_time:{
-                        [Op.gte]:selected_day,
+                        [Op.gte]:this_day,
                         [Op.lt]:next_day
                     }
                 },
@@ -56,19 +57,19 @@ router.get('/',authMiddleware, async(req,res)=>{
             }),//먹이
             Waterchangelog.findAll({
                 where:{
-                    device_id,
+                    device_id:tank.device_id,
                     started_at:{
-                        [Op.gte]:selected_day,
+                        [Op.gte]:this_day,
                         [Op.lt]:next_day
                     }
                 }
             })
         ])
-
+        console.log(daily);
         if(!daily){
             return res.status(200).json({exist:false,message:'기록된 정보가 없습니다.'})
         }
-
+        console.log(daily);
         return res.status(200).json({exist:true,daily,waterChange,Feeding})
         /**
          1번 일지 정보가 들어온다.

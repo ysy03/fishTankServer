@@ -159,7 +159,6 @@ router.get('/myinfo',authMiddleware,async(req,res)=>{
         const ImageUrl = image ? 
             `${req.protocol}://${req.get('host')}${image.Image_url}`:
             `${req.protocol}://${req.get('host')}/uploads/user/default.png`;
-        console
         return res.status(200).json({user,image:ImageUrl});   
     } catch (error) {
         return res.status(500).json({

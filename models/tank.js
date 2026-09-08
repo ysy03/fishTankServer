@@ -10,7 +10,8 @@ module.exports = (sequelize,DataTypes)=>{
             db.Tank.belongsTo(db.User,{foreignKey:'user_id',targetKey:'user_id'});
             db.Tank.hasMany(db.Waterchangelog,{foreignKey:'device_id',targetKey:'device_id'});
             db.Tank.hasMany(db.WaterQuality,{foreignKey:'device_id',soruceKey:'device_id'});
-            db.Tank.hasMany(db.Alert,{foreignKey:'device_id',soruceKey:'device_id'})
+            db.Tank.hasMany(db.Alert,{foreignKey:'device_id',soruceKey:'device_id'});
+            db.Tank.hasMany(db.Fishinfo,{foreignKey:'device_id',soruceKey:'device_id'})
         }
     }
 
