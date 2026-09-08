@@ -99,6 +99,8 @@ async function inspectTemp(device_id, type, current_state, tempLevel) {
         })
         return;
     }
+    console.log("전송 데이터:", data);
+    const message = `data: ${JSON.stringify(data)}\n\n`
 
     // 정상 상태
     if (current_state === 'normal') {

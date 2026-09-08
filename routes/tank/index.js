@@ -21,7 +21,7 @@ router.post('/setting',devAuthMiddleware,async(req,res)=>{
             tank_name,
             device_id} = req.body;
         const {user_id} = req.user;
-        const tank = await Tank.findOne({where:{user_id,device_id:device_id||'SS501'}});
+        const tank = await Tank.findOne({where:{user_id,device_id:device_id||'TEST'}});
         if(!tank){
             return res.status(404).json({message:'어항이 저장되어 있지 않습니다.'})
         }
@@ -41,6 +41,7 @@ router.post('/setting',devAuthMiddleware,async(req,res)=>{
     }
 })
 
+//설정 조회
 router.get('/setting/:id',devAuthMiddleware,async(req,res)=>{
     try {
         const{id:device_id} = req.params;
@@ -55,16 +56,17 @@ router.get('/setting/:id',devAuthMiddleware,async(req,res)=>{
     }
 })
 
+//설정 저장
 router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
     try {
-        const {id:devce_id} = req.params;
+        const {id:device_id} = req.params;
         const {min_temp,
             max_temp,
             normal_waterquality,
             warning_waterquality,
             tank_name,
             } = req.body;
-            const tank = await Tank.findOne({where:{devce_id}});
+            const tank = await Tank.findOne({where:{device_id}});
         if(!tank){
             return res.status(400).json({message:'데이터를 가져오지 못했습니다.'})
         }
@@ -89,7 +91,7 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-
+//IOT 센서 데이터 보냄
 router.post('/Sensor',async(req,res)=>{
     try {
         const {device_id='SS501',temperature,water_quality} = req.body;
@@ -97,7 +99,10 @@ router.post('/Sensor',async(req,res)=>{
             return res.status(400).json({message:'데이터 전달에 실패하였습니다.'})
         }
 
-        //원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
+        const tank = await Tank.findOne({where:{device_id:device_id||'TEST'}})
+        if(!tank){
+            return res.status(400).json({message:'저장한 어항이 없습니다.'})
+        }//원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
         const senseData = updateSensor(device_id,temperature,water_quality);
         sendToUser(device_id,senseData);
         return res.sendStatus(204);  
@@ -130,10 +135,10 @@ router.get('/logdata',authMiddleware,async(req,res)=>{
     }
 })
 
-
+//실시간 수온/수질 데이터 받기
 router.get('/data',devAuthMiddleware,async (req,res) => {
     try {
-        const {device_id='SS501'} = req.query;
+        const {device_id='TEST'} = req.query;
         const tank = await Tank.findOne({where:{
             device_id
         }})
@@ -157,7 +162,7 @@ router.get('/data',devAuthMiddleware,async (req,res) => {
     
 })
 
-
+//급여
 router.post('/feed',async(req,res)=>{
     const {device_id} = req.body;
     const status = Math.random() > 0.3;
