@@ -40,8 +40,7 @@ module.exports = (sequelize,DataTypes) =>{
             sequelize,
             modelName:'User',
             tableName:'user',
-            createdAt:'created_at',
-            updatedAt:false,
+            timestamps:false,
             charset: 'utf8mb4',
             collate: 'utf8mb4_general_ci',
         }
@@ -49,4 +48,3 @@ module.exports = (sequelize,DataTypes) =>{
 
     return User;
 }
-

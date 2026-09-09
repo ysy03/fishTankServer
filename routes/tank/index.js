@@ -114,10 +114,6 @@ router.post('/Sensor',async(req,res)=>{
     
 })
 
-<<<<<<< HEAD
-=======
-//기록 조회
->>>>>>> 49da13a ('2026-09-08')
 router.get('/logdata',authMiddleware,async(req,res)=>{
     try {
         const {device_id} = req.query;
@@ -174,11 +170,7 @@ router.post('/feed',async(req,res)=>{
     try {
         const tank = await Tank.findOne({
             where:{
-<<<<<<< HEAD
                 device_id:device_id||"SS501"//SS501은 더미데이터이므로 무시 가능
-=======
-                device_id:data.deviceId||"SS501"//SS501은 더미데이터이므로 무시 가능
->>>>>>> 49da13a ('2026-09-08')
             }
         })
         if(!tank){
@@ -197,10 +189,6 @@ router.post('/feed',async(req,res)=>{
     }
 })
 
-<<<<<<< HEAD
-=======
-//환수
->>>>>>> 49da13a ('2026-09-08')
 router.post('/waterchange',authMiddleware,async(req,res)=>{
     try {
         const {device_id} = req.body;

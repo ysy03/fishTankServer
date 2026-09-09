@@ -47,7 +47,7 @@ router.get('/rooms/:id',authMiddleware,async(req,res)=>{
     }
 })
 
-router.post('/rooms/:id/message',devAuthMiddleware,async(req,res)=>{
+router.post('/rooms/:id/message',authMiddleware,async(req,res)=>{
     let t;
     try {
         t = await sequelize.transaction();
