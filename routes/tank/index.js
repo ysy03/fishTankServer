@@ -133,7 +133,6 @@ router.post('/Sensor',async(req,res)=>{
     
 })
 
-//기록 조회
 router.get('/logdata',authMiddleware,async(req,res)=>{
     try {
         const {user_id} = req.user;
