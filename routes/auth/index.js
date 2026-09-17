@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
-const {User,UserImage,Fishinfo} = require('../../models');
+const {User,UserImage,Fishinfo,Tank} = require('../../models');
 const jwt = require('jsonwebtoken');
 const authmiddleware = require('../auth/authMiddleware');
 const authMiddleware = require('../auth/authMiddleware');
@@ -83,9 +83,14 @@ router.post('/login',async(req,res)=>{
         await User.update({
             token:refreshtoken
         },{where:{user_id:exUser.user_id}})
-
+        const tank = await Tank.findOne({
+            where:{
+                user_id:exUser.user_id
+            }
+        })
+        const device_id = tank?.device_id;
         const exNickname = exUser?.nickname != null;
-        return res.status(200).json({exNickname,accesstoken,refreshtoken}); 
+        return res.status(200).json({exNickname,accesstoken,refreshtoken,device_id:device_id||null}); 
     } catch (error) {
         console.log(error);
         return res.status(error.status || 500).json({

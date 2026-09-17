@@ -5,11 +5,13 @@ const clients = new Map();//탱크 연결
 const tankcache = new Map();//탱크 정보
 const TempalertState = new Map();//알림 지정
 const WqalertState = new Map();
+const commandState = new Map();
 
 function addClients(device_id,res){
     console.log('들어옴');
     if(!clients.has(device_id)){
         clients.set(device_id,new Set());
+        
     }
 
     clients.get(device_id).add(res);
@@ -33,7 +35,9 @@ function removeCLients(device_id,res){
 
 async function sendToUser(device_id,data){
     let tank = tankcache.get(device_id);
-    console.log(tank);
+    if(!clients.has(device_id)){
+        return;
+    }
     if (!tank) {
         console.log(`어항 설정 없음: ${device_id}`);
         const exTank = await Tank.findOne({where:{device_id}});
@@ -262,7 +266,7 @@ async function loadTankCache(){
                 temp_state:'normal',
                 temp_time:null,
                 temp_pending_count:0,
-            }),
+            });
             WqalertState.set(tank.device_id,{
                 wq_state:'normal',
                 wq_pending_count:0
@@ -292,6 +296,7 @@ function addTank(tank_info){
 }
 
 function updateTankcache(tank_info){
+    console.log(tank_info);
     tankcache.set(tank_info.device_id,{
         min_temp:tank_info.min_temp,
         max_temp:tank_info.max_temp,
@@ -315,6 +320,7 @@ function sendSSE(device_id, data) {
 }
 
 
+
 module.exports = {
     addClients,
     removeCLients,
@@ -323,5 +329,7 @@ module.exports = {
     updateTankcache,
     resetSensorState,
     sendSSE,
-    sensorState
+    addTank,
+    sensorState,
+    commandState
 }

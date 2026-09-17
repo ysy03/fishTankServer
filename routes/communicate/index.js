@@ -4,7 +4,7 @@ const {User,Post,Comment,CommentLike,Image} = require('../../models');
 const authMiddleware = require('../auth/authMiddleware');
 const { Op,fn,col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
-const upload = require('../uploaded/profileupload');
+const upload = require('../uploaded/userupload');
 const fs = require('fs');
 const path = require('path');
 //커뮤니티 리스트 관련
@@ -97,7 +97,7 @@ router.get('/posts',async(req,res)=>{
 
 })
 
-router.post('/posts',devAuthMiddleware,upload.array('images',4),async (req,res) => {
+router.post('/posts',authMiddleware,upload.array('images',4),async (req,res) => {
     try {
         const {title,fish_type,content} = req.body;
         const id = req.user.user_id;
@@ -127,7 +127,7 @@ router.post('/posts',devAuthMiddleware,upload.array('images',4),async (req,res) 
 
 //개인 게시글 정보
 
-router.get('/posts/:id',devAuthMiddleware,async (req,res) => {
+router.get('/posts/:id',authMiddleware,async (req,res) => {
     try {
         const {id} = req.params;
         const {user_id} = req.user;
@@ -204,7 +204,7 @@ router.get('/posts/:id',devAuthMiddleware,async (req,res) => {
 
 //게시글 업데이트
 
-router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
+router.get('/update/:id',authMiddleware,async(req,res)=>{
     const {id} = req.params;
     try {
         const Postdata = await Post.findOne({where:{post_id:id},include:[{model:User}]});
@@ -227,7 +227,7 @@ router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,res)=>{
+router.post('/update/:id',authMiddleware,upload.array('images',4),async(req,res)=>{
     const {id} = req.params;
     const images = req.files || [];
     let deleteImageId = req.body.deleteImageId || [];
@@ -299,12 +299,13 @@ router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,r
         })
         return res.status(204).send()
     } catch (error) {
+        console.log(error);
         return res.status(error.status||500).json({message:error.message||'서버에 문제가 발생하였습니다.'})
     }
 })
 
 //댓글
-router.post('/comment',devAuthMiddleware,async(req,res)=>{
+router.post('/comment',authMiddleware,async(req,res)=>{
     try {
         const userId = req.user.user_id;
         const {post_id,content,commentId}  = req.body;
@@ -321,7 +322,7 @@ router.post('/comment',devAuthMiddleware,async(req,res)=>{
 })
 
 
-router.post('/comment/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/comment/:id',authMiddleware,async(req,res)=>{
     try {
         const content = req.body.update;
         console.log(req.body);
@@ -341,7 +342,7 @@ router.post('/comment/:id',devAuthMiddleware,async(req,res)=>{
 })
 
 
-router.post('/commentLike/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/commentLike/:id',authMiddleware,async(req,res)=>{
     try {
         console.log('들어옴');
         const {id} = req.params;
@@ -375,7 +376,7 @@ router.post('/commentLike/:id',devAuthMiddleware,async(req,res)=>{
 
 
 //게시글 삭제
-router.delete('/posts/:id',devAuthMiddleware,async(req,res)=>{
+router.delete('/posts/:id',authMiddleware,async(req,res)=>{
     console.log('들어감');
     try {
         const {id} = req.params;
@@ -418,7 +419,7 @@ router.delete('/posts/:id',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-router.post('/deletecomment/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/deletecomment/:id',authMiddleware,async(req,res)=>{
     try {
         const {id} = req.params;
         const comment = await Comment.findOne({where:{comment_id:id}});

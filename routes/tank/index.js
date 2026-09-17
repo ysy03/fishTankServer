@@ -4,7 +4,7 @@ const router = app.Router();
 const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog,Alert} = require('../../models');
 const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
-const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache } = require('./tanksse');
+const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache, addTank, commandState } = require('./tanksse');
 
 router.get('/',devAuthMiddleware,async(req,res)=>{
     const tankData = await Tank.findAll({where:{user_id:req.user_id}});
@@ -21,11 +21,7 @@ router.post('/setting',authMiddleware,async(req,res)=>{
             tank_name,
             device_id} = req.body;
         const {user_id} = req.user;
-        const tank = await Tank.findOne({where:{user_id,device_id:device_id||'TEST'}});
-        if(!tank){
-            return res.status(404).json({message:'어항이 저장되어 있지 않습니다.'})
-        }
-        await tank.update({
+        const response = await Tank.create({
             user_id,
             tank_name,
             device_id,
@@ -34,7 +30,8 @@ router.post('/setting',authMiddleware,async(req,res)=>{
             normal_waterquality,
             warning_waterquality
         })
-        return res.status(200).json({tank_id});
+        addTank(response);
+        return res.sendStatus(204);
     } catch (error) {
         console.error(error.message);
         return res.status(error.status||500).json({message:'데이터 저장에 실패하였습니다.'})
@@ -78,7 +75,7 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
             tank_name
         })
         updateTankcache({
-            devce_id,
+            device_id,
             min_temp,
             max_temp,
             normal_waterquality,
@@ -105,7 +102,29 @@ router.post('/Sensor',async(req,res)=>{
         }//원래 tank_id를 보내지 못하면 해당 if문이 발생하여 오류 전달 지금은 test아이디인 SS501을 사용 중
         const senseData = updateSensor(device_id,temperature,water_quality);
         sendToUser(device_id,senseData);
-        return res.sendStatus(204);  
+        const command = commandState.get(device_id);
+        if (
+            command?.type === 'feed' &&
+            command?.status === 'success'
+        ) {
+            await Feederlog.create({
+                device_id,
+                status: true
+            });
+
+            sendToUser(device_id, {
+                type: 'command',
+                data: {
+                    command: 'feed',
+                    status: 'success'
+                }
+            });
+
+            commandState.delete(device_id);
+        }
+        return res.status(200).json({
+            command: command ?? null
+        }); 
     } catch (error) {
         console.error(error);
         return res.status(error.status||500).json({message:error.message||'서버에 에러가 발생하였습니다.'})
@@ -114,13 +133,11 @@ router.post('/Sensor',async(req,res)=>{
     
 })
 
-<<<<<<< HEAD
-=======
 //기록 조회
->>>>>>> 49da13a ('2026-09-08')
 router.get('/logdata',authMiddleware,async(req,res)=>{
     try {
-        const {device_id} = req.query;
+        const {user_id} = req.user;
+        const tank = await Tank.findOne({where:{user_id}});
         const today =new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
@@ -142,10 +159,9 @@ router.get('/logdata',authMiddleware,async(req,res)=>{
 //실시간 수온/수질 데이터 받기
 router.get('/data',authMiddleware,async (req,res) => {
     try {
-        console.log('들어감 2');
-        const {device_id='SS501'} = req.query;
+        const {user_id} = req.user;
         const tank = await Tank.findOne({where:{
-            device_id
+            user_id
         }})
         if(!tank){
             return res.status(400).json({message:'저장한 기기를 발견하지 못했습니다.'})
@@ -155,10 +171,10 @@ router.get('/data',authMiddleware,async (req,res) => {
         res.setHeader('Connection', 'keep-alive');
 
         res.flushHeaders();
-        addClients(device_id,res);
+        addClients(tank.device_id,res);
 
         req.on('close',()=>{
-            removeCLients(device_id,res);
+            removeCLients(tank.device_id,res);
         })
     } catch (error) {
         console.error(error.message)
@@ -168,28 +184,32 @@ router.get('/data',authMiddleware,async (req,res) => {
 })
 
 //급여
-router.post('/feed',async(req,res)=>{
-    const {device_id} = req.body;
-    const status = Math.random() > 0.3;
+router.post('/feed',authMiddleware,async(req,res)=>{
     try {
+        const {user_id} = req.user;
         const tank = await Tank.findOne({
             where:{
-<<<<<<< HEAD
-                device_id:device_id||"SS501"//SS501은 더미데이터이므로 무시 가능
-=======
-                device_id:data.deviceId||"SS501"//SS501은 더미데이터이므로 무시 가능
->>>>>>> 49da13a ('2026-09-08')
+                user_id
             }
         })
         if(!tank){
             return res.status(404).json({message:'탱크를 찾아내지 못했습니다.'})
         }
 
-        const Data = await Feederlog.create({
-            device_id:tank.device_id,
-            status
-        })
-        return res.status(201).json(Data)
+        if (commandState.has(device_id)) {
+            return res.status(409).json({
+                message: '이미 실행 중인 명령이 있습니다.'
+            });
+        }
+
+        // IoT가 가져갈 명령 저장
+        commandState.set(device_id, {
+            type: 'feed',
+            status: 'pending'
+        });
+        return res.status(202).json({
+            message: '먹이 지급 명령이 등록되었습니다.'
+        });
 
     } catch (error) {
         console.error('error');
@@ -197,13 +217,9 @@ router.post('/feed',async(req,res)=>{
     }
 })
 
-<<<<<<< HEAD
-=======
 //환수
->>>>>>> 49da13a ('2026-09-08')
 router.post('/waterchange',authMiddleware,async(req,res)=>{
     try {
-        const {device_id} = req.body;
         const StartDate = new Date();
         await new Promise(resolve => setTimeout(resolve, 5000));
 
