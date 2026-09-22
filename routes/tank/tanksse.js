@@ -270,7 +270,7 @@ async function loadTankCache(){
             WqalertState.set(tank.device_id,{
                 wq_state:'normal',
                 wq_pending_count:0
-            })
+            });
         }
     } catch (error) {
         console.log(`어항 정보 캐시 오류 ${error}`);
@@ -293,6 +293,7 @@ function addTank(tank_info){
         wq_state:'normal',
         wq_pending_count:0
     })
+    commandState.set(tank_info.device_id,{command:null});
 }
 
 function updateTankcache(tank_info){
@@ -303,6 +304,18 @@ function updateTankcache(tank_info){
         normal_waterquality:tank_info.normal_waterquality,
         warning_waterquality:tank_info.warning_waterquality
     })
+}
+
+function setCommand(device_id,data = {}){
+    const Command = commandState.get(device_id);
+    if(!Command){
+        return;
+    }
+    Command.command = {
+        type: data.type ?? null,
+        data: data.data ?? null,
+        status: 'pending'
+    }
 }
 
 function sendSSE(device_id, data) {
@@ -319,6 +332,33 @@ function sendSSE(device_id, data) {
     });
 }
 
+function sendFeedResult(device_id, success) {
+    const client = clients.get(device_id);
+
+    if (!client) return;
+
+    for (const res of client) {
+        res.write(`data: ${JSON.stringify({
+            type: 'feed',
+            data: success ? 'success' : 'failed'
+        })}\n\n`);
+    }
+}
+
+
+function sendWqResult(device_id, success) {
+    const client = clients.get(device_id);
+
+    if (!client) return;
+
+    for (const res of client) {
+        res.write(`data: ${JSON.stringify({
+            type: 'waterChange',
+            data: success ? 'success' : 'failed'
+        })}\n\n`);
+    }
+}
+
 
 
 module.exports = {
@@ -330,6 +370,10 @@ module.exports = {
     resetSensorState,
     sendSSE,
     addTank,
+    loadTankCache,
     sensorState,
-    commandState
+    commandState,
+    setCommand,
+    sendFeedResult,
+    sendWqResult
 }

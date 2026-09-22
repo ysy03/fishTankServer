@@ -200,27 +200,40 @@ router.post('/profile',authMiddleware,upload.single('image'),async(req,res)=>{
             }
         }
         
-        if(image){
-            imageurl = `/uploads/user/${image.filename}`
+        if (image) {
+            const imageurl = `/uploads/user/${image.filename}`;
+
             const userImage = await UserImage.findOne({
-                where:{
-                    user_id:req.user.user_id
+                where: {
+                    user_id: req.user.user_id
                 }
-            })
-            if(userImage){
+            });
+
+            if (userImage) {
+                // 기존 이미지 주소 먼저 저장
+                const oldImageUrl = userImage.Image_url;
+
+                // DB를 새 이미지 주소로 변경
                 await userImage.update({
-                    Image_url:imageurl
-                })
-                fs.unlink(path.join(__dirname,'../..',userImage.Image_url),(err)=>{
-                    if (err && err.code !== 'ENOENT') {
-                        console.error(err);
-                    }
-                })
-            }else{
+                    Image_url: imageurl
+                });
+
+                // 기존 이미지 삭제
+                if (oldImageUrl) {
+                    fs.unlink(
+                        path.join(__dirname, '../..', oldImageUrl),
+                        (err) => {
+                            if (err && err.code !== 'ENOENT') {
+                                console.error(err);
+                            }
+                        }
+                    );
+                }
+            } else {
                 await UserImage.create({
-                    user_id:req.user.user_id,
-                    Image_url:imageurl
-                })
+                    user_id: req.user.user_id,
+                    Image_url: imageurl
+                });
             }
         }
 

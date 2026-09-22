@@ -4,7 +4,7 @@ const router = app.Router();
 const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog,Alert} = require('../../models');
 const { fn, Op, col } = require('sequelize');
 const devAuthMiddleware = require('../auth/devauthMiddleware');
-const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache, addTank, commandState } = require('./tanksse');
+const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache, addTank, commandState,sendFeedResult,sendSSE, sendWqResult } = require('./tanksse');
 
 router.get('/',devAuthMiddleware,async(req,res)=>{
     const tankData = await Tank.findAll({where:{user_id:req.user_id}});
@@ -54,7 +54,7 @@ router.get('/setting/:id',authMiddleware,async(req,res)=>{
 })
 
 //설정 저장
-router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/setting/:id',authMiddleware,async(req,res)=>{
     try {
         const {id:device_id} = req.params;
         const {min_temp,
@@ -91,7 +91,7 @@ router.post('/setting/:id',devAuthMiddleware,async(req,res)=>{
 //IOT 센서 데이터 보냄
 router.post('/Sensor',async(req,res)=>{
     try {
-        const {device_id='SS501',temperature,water_quality} = req.body;
+        const {device_id='SS501',temperature,water_quality,sendCommand} = req.body;
         if(temperature == null || water_quality == null){
             return res.status(400).json({message:'데이터 전달에 실패하였습니다.'})
         }
@@ -103,25 +103,6 @@ router.post('/Sensor',async(req,res)=>{
         const senseData = updateSensor(device_id,temperature,water_quality);
         sendToUser(device_id,senseData);
         const command = commandState.get(device_id);
-        if (
-            command?.type === 'feed' &&
-            command?.status === 'success'
-        ) {
-            await Feederlog.create({
-                device_id,
-                status: true
-            });
-
-            sendToUser(device_id, {
-                type: 'command',
-                data: {
-                    command: 'feed',
-                    status: 'success'
-                }
-            });
-
-            commandState.delete(device_id);
-        }
         return res.status(200).json({
             command: command ?? null
         }); 
@@ -141,15 +122,19 @@ router.get('/logdata',authMiddleware,async(req,res)=>{
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate()+1);
-        const [FeedData,waterchange]  = await Promise.all([
-            FeedData.findAll({where:{device_id:device_id,feed_time:{[Op.gte]:today,[Op.lt]:tomorrow}}}),
-            Waterchangelog.findAll({where:{device_id:device_id,started_at:{
+        const [FeedData,waterChange]  = await Promise.all([
+            Feederlog.findOne({where:{device_id:tank.device_id,feed_time:{[Op.gte]:today,[Op.lt]:tomorrow}}}),
+            Waterchangelog.findOne({where:{device_id:tank.device_id,end_at:{
                 [Op.gte] : today,
-                [Op.lt]:tomorrow
+                [Op.lt]: tomorrow
             }}})
         ])
+
+        const feed = FeedData?.status === true;
+        const waterchange = waterChange?.status === true;
+
         
-        return res.json({waterchange,FeedData});   
+        return res.json({feed,waterchange});   
     } catch (error) {
         return res.status(error.status||500).json({message:error.message||'에러 메세지가 발생하였습니다.'})
     }
@@ -186,6 +171,142 @@ router.get('/data',authMiddleware,async (req,res) => {
 router.post('/feed',authMiddleware,async(req,res)=>{
     try {
         const {user_id} = req.user;
+        const now = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tank = await Tank.findOne({
+            where:{
+                user_id
+            }
+        })
+        if(!tank){
+            return res.status(404).json({message:'탱크를 찾아내지 못했습니다.'})
+        }
+        const feedlog = await Feederlog.findOne({
+            where:{
+                device_id:tank.device_id,
+                feed_time:{
+                    [Op.gte]:today,
+                    [Op.lt]:tomorrow
+                }
+            }
+        })
+        console.log(`${feedlog}`)
+        if(feedlog&&feedlog.status){
+            return res.status(409).json({
+                message: '오늘 먹이지급을 완료하였습니다.'
+            });
+        }
+        if (commandState.has(tank.device_id)) {
+            return res.status(409).json({
+                message: '이미 실행 중인 명령이 있습니다.'
+            });
+        }
+
+        // IoT가 가져갈 명령 저장
+        commandState.set(tank.device_id, {
+            type: 'feed',
+            status: 'pending'
+        });
+        return res.status(202).json({
+            message: '먹이 지급 명령이 등록되었습니다.'
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(error.status||500).json({message:'에러가 발생하였습니다.'});
+    }
+})
+
+router.get('/event', authMiddleware, async (req, res) => {
+    try {
+        const { user_id } = req.user;
+        const { event } = req.query;
+        const tank = await Tank.findOne({
+            where: { user_id }
+        });
+
+        if (!tank) {
+            return res.status(404).json({
+                message: '탱크를 찾을 수 없습니다.'
+            });
+        }
+
+        // SSE 헤더
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        res.flushHeaders();
+
+        // 연결 저장
+        addClients(tank.device_id, res);
+
+        console.log('환수 결과 SSE 연결');
+
+        // Flutter가 화면을 나가서 연결이 끊어지면
+        
+        req.on('close',()=>{
+            removeCLients(tank.device_id,res);
+            console.log('먹이 지급 결과 SSE 연결 종료');
+        });
+
+    } catch (error) {
+        console.log(error.message);
+
+        if (!res.headersSent) {
+            return res.status(error.status || 500).json({
+                message: error.message || '서버에 에러가 발생하였습니다.'
+            });
+        }
+    }
+});
+router.post('/feed/result', async (req, res) => {
+    const { device_id, success = true } = req.body;
+    sendFeedResult(device_id, success)
+    commandState.delete(device_id);
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const feedlog = await Feederlog.findOne({
+        where:{
+                device_id,
+                feed_time:{
+                    [Op.gte]:today,
+                    [Op.lt]:tomorrow
+                }
+            }
+    })
+    console.log(feedlog);
+    if(feedlog){
+        await feedlog.update({
+            status:success,
+            feed_time:now
+        })
+    }else{
+        await Feederlog.create({
+            device_id,
+            status:success
+        })
+    }
+    return res.status(200).json({
+        message: '결과 수신 완료'
+    });
+});
+
+//환수
+router.post('/waterchange',authMiddleware,async(req,res)=>{
+    try {
+        const {user_id} = req.user;
+        const now = new Date();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
         const tank = await Tank.findOne({
             where:{
                 user_id
@@ -195,47 +316,76 @@ router.post('/feed',authMiddleware,async(req,res)=>{
             return res.status(404).json({message:'탱크를 찾아내지 못했습니다.'})
         }
 
-        if (commandState.has(device_id)) {
+        if (commandState.has(tank.device_id)) {
             return res.status(409).json({
                 message: '이미 실행 중인 명령이 있습니다.'
             });
         }
-
+        const tanklog = await Waterchangelog.findOne({where:{
+            device_id:tank.device_id,
+            end_at:{
+                [Op.gte]:today,
+                [Op.lt]:tomorrow
+            }
+        }})
+        if(tanklog&&tanklog.status){
+            return res.status(409).json({
+                message: '오늘 이미 환수를 완료했습니다.'
+            });
+        } 
         // IoT가 가져갈 명령 저장
-        commandState.set(device_id, {
-            type: 'feed',
+        commandState.set(tank.device_id, {
+            type: 'waterChange',
             status: 'pending'
         });
+        if(!tanklog){
+            await Waterchangelog.create({
+            device_id:tank.device_id,
+            started_at:now,
+            status: null
+        })}
+        else{
+            tanklog.update({
+                started_at:now,
+                status: null
+            })
+        }
         return res.status(202).json({
-            message: '먹이 지급 명령이 등록되었습니다.'
+            message: '환수 명령이 등록되었습니다.'
         });
-
-    } catch (error) {
-        console.error('error');
-        return res.status(error.status||500).json({message:'에러가 발생하였습니다.'});
-    }
-})
-
-//환수
-router.post('/waterchange',authMiddleware,async(req,res)=>{
-    try {
-        const StartDate = new Date();
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        const status = Math.random() > 0.7 ? true : false;
-        const date = await Waterchangelog.create({
-            device_id:device_id||'SS501',
-            status,
-            started_at: StartDate,
-            ended_at:new Date()
-        })
-        return res.json(date);   
     } catch (error) {
         console.log(error);
         return res.status(error.status||500).json({
             message:'에러 메세지가 발생하였습니다.'
         })
     }
+})
+
+router.post('/waterchange/result',async(req,res)=>{
+    const { device_id, success } = req.body;
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    sendWqResult(device_id, success)
+    commandState.delete(device_id);
+    const tanklog = await Waterchangelog.findOne({
+        where:{
+            device_id,
+            started_at:{
+                [Op.gte]:today,
+                [Op.lt]:tomorrow
+            }
+        }
+    })
+    await tanklog.update({
+        end_at:now,
+        status:success
+    })
+    return res.status(200).json({
+        message: '결과 수신 완료'
+    });
 })
 
 

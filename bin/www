@@ -3,6 +3,7 @@
 /**
  * Module dependencies.
  */
+const {loadTankCache} = require('../routes/tank/tanksse');
 
 var app = require('../app');
 var debug = require('debug')('backend:server');
