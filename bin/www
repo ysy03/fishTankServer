@@ -8,6 +8,7 @@ const {loadTankCache} = require('../routes/tank/tanksse');
 var app = require('../app');
 var debug = require('debug')('backend:server');
 var http = require('http');
+const {connectWs} = require('../socket/index');
 
 /**
  * Get port from environment and store in Express.
@@ -21,7 +22,7 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
-
+connectWs(server);
 /**
  * Listen on provided port, on all network interfaces.
  */

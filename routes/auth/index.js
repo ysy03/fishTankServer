@@ -90,7 +90,7 @@ router.post('/login',async(req,res)=>{
         })
         const device_id = tank?.device_id;
         const exNickname = exUser?.nickname != null;
-        return res.status(200).json({exNickname,accesstoken,refreshtoken,device_id:device_id||null}); 
+        return res.status(200).json({user_id:exUser.user_id,exNickname,accesstoken,refreshtoken,device_id:device_id||null}); 
     } catch (error) {
         console.log(error);
         return res.status(error.status || 500).json({
