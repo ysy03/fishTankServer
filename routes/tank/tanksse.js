@@ -4,6 +4,7 @@ const sensorState = new Map();//최고온도,최저온도 저장
 const clients = new Map();//탱크 연결
 const tankcache = new Map();//탱크 정보
 const alertState = new Map();//알림 지정
+const commandState = new Map();//웹소켓 관
 
 function addClients(device_id,res){
     console.log('들어옴');
@@ -70,6 +71,8 @@ async function sendToUser(device_id,data){
 
 
 async function inspectTemp(device_id, type, current_state, tempLevel) {
+    console.log("inspectTemp 실행");
+    console.log(device_id, current_state, tempLevel);
     const state = alertState.get(device_id);
 
         // 위험 상태
@@ -99,8 +102,8 @@ async function inspectTemp(device_id, type, current_state, tempLevel) {
         })
         return;
     }
-    console.log("전송 데이터:", data);
-    const message = `data: ${JSON.stringify(data)}\n\n`
+    /*console.log("전송 데이터:", data);
+    const message = `data: ${JSON.stringify(data)}\n\n`*/
 
     // 정상 상태
     if (current_state === 'normal') {
@@ -147,6 +150,8 @@ async function inspectTemp(device_id, type, current_state, tempLevel) {
 }
 
 async function inspectWQ(device_id,type,current_state) {
+    console.log("inspectWQ 실행");
+    console.log(device_id, current_state);
     const state = alertState.get(device_id);
     if(current_state === 'dangerous'){
         if(state.waterquality_state === 'dangerous'){
@@ -320,5 +325,7 @@ module.exports = {
     sendToUser,
     updateSensor,
     resetSensorState,
-    sensorState
+    sensorState,
+    loadTankCache,
+    commandState
 }
