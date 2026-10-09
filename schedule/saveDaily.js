@@ -7,7 +7,8 @@ function savedaily(){
         yesterday.setDate(yesterday.getDate()-1);
         const start = new Date(yesterday);
         start.setHours(0,0,0,0);
-        const end = new Date(yesterday.getDate()+1);
+        const end = new Date(start);
+        end.setDate(end.getDate()+1);
         end.setHours(0,0,0,0);
         try {
             const results = await Sensor.findAll({
