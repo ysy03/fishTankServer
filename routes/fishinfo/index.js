@@ -2,7 +2,6 @@ const app = require('express');
 const router = app.Router();
 const authMiddleware = require('../auth/authMiddleware');
 const {Tank,Fishinfo, sequelize} = require('../../models');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 
 //물고기 정보 전달
 router.get('/',authMiddleware,async(req,res)=>{

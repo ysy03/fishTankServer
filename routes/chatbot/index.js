@@ -1,5 +1,4 @@
 const app = require('express');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 const router = app.Router();
 const {ChatbotRoom,ChatbotMessage, sequelize} = require('../../models');
 const { GenerateResponse } = require('./chatbotSetting');

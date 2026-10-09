@@ -1,5 +1,4 @@
 const app = require('express');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 const {Tank,Daily,Feederlog,Waterchangelog} = require('../../models');
 const { Op, col,fn } = require('sequelize');
 const authMiddleware = require('../auth/authMiddleware');
@@ -65,11 +64,10 @@ router.get('/:date',authMiddleware, async(req,res)=>{
                 }
             })
         ])
-        console.log(daily);
+        console.log(`날짜${daily}/피드${waterChange != null}/먹이${Feeding != null}`);
         if(!daily){
             return res.status(200).json({exist:false,message:'기록된 정보가 없습니다.'})
         }
-        console.log(daily);
         return res.status(200).json({exist:true,daily,waterChange,Feeding})
         /**
          1번 일지 정보가 들어온다.

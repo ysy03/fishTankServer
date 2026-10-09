@@ -3,7 +3,6 @@ const router = app.Router();
 const {User,Post,Comment,CommentLike,Image} = require('../../models');
 const authMiddleware = require('../auth/authMiddleware');
 const { Op,fn,col } = require('sequelize');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 const upload = require('../uploaded/profileupload');
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +19,7 @@ router.get('/list',async (req,res) => {
                                 : [];
         if(keyword){
             where.title = {
-                [Op.like]: `${keyword}`
+                [Op.like]: `%${keyword}%`
             };
         }
         if(selectedFishTypes.length > 0){
@@ -32,7 +31,7 @@ router.get('/list',async (req,res) => {
         let datas = await Post.findAll({
             where,
             attributes:['post_id','title','content','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
-            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],required:false}],
+            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
             group:[
                 'Post.post_id',
                 'User.user_id'
@@ -72,7 +71,7 @@ router.get('/mypost/data',authMiddleware,async(req,res)=>{
         const datas = await Post.findAll({
             where,
             attributes:['post_id','title','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
-            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],required:false}],
+            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
             group:[
                 'Post.post_id',
                 'User.user_id'
@@ -154,24 +153,6 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
             ],
             order:[['created_at','ASC']]
         })
-        const myliked = await CommentLike.findAll({
-            where:{
-                user_id,
-                comment_id: {
-                    [Op.in]: commentDatas.map(comment => comment.comment_id)
-                }
-            },
-            attributes:['comment_id'],
-            raw:true
-        })
-        const myliskIds = new Set(myliked.map(like=>like.comment_id));
-        const comments = commentDatas.map(comment=>{
-            const data = comment.toJSON();
-            return{
-                ...data,
-                liked:myliskIds.has(comment.comment_id)
-            }
-        })
         const replyData = await Comment.findAll({
             where:{
                 post_id:id,parent_id:{
@@ -212,8 +193,35 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                 Image_url: `${req.protocol}://${req.get('host')}${data.Image_url}`
             };
         });
+        const allComments = [...commentDatas, ...replyData];
+        const myliked = await CommentLike.findAll({
+            where: {
+                user_id,
+                comment_id: {
+                    [Op.in]: allComments.map(comment => comment.comment_id)
+                }
+            },
+            attributes: ['comment_id'],
+            raw: true
+        });
+
+        const myLikedIds = new Set(
+            myliked.map(like => like.comment_id)
+        );
+
+        const addLiked = (comment) => {
+            const data = comment.toJSON();
+
+            return {
+                ...data,
+                liked: myLikedIds.has(comment.comment_id)
+            };
+        };
+
+        const comments = commentDatas.map(addLiked);
+        const replies = replyData.map(addLiked);
         const mine = user_id === Postdata.user_id;
-        res.json({mine,replyData,commentDatas:comments,Postdata,images:imageDatas})
+        res.json({mine,replyData:replies,commentDatas:comments,Postdata,images:imageDatas})
     } catch (error) {
         console.log(error);
         res.json({message:'오류가 발생하였습니다.'})

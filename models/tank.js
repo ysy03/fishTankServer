@@ -28,9 +28,6 @@ module.exports = (sequelize,DataTypes)=>{
                 key:'user_id'
             }
         },
-        tank_name:{
-            type:DataTypes.STRING
-        },
         device_id:{
             type:DataTypes.STRING
         },

@@ -3,14 +3,8 @@ const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
 const {Sensor,WaterQuality,Tank, Feederlog,Waterchangelog,Alert} = require('../../models');
 const { fn, Op, col } = require('sequelize');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache, addTank, commandState,sendFeedResult,sendSSE, sendWqResult } = require('./tanksse');
 const { sendToDevice } = require('../../socket');
-
-router.get('/',devAuthMiddleware,async(req,res)=>{
-    const tankData = await Tank.findAll({where:{user_id:req.user_id}});
-    return res.json(tankData);
-})
 
 //온도,수질 지정
 router.post('/setting',authMiddleware,async(req,res)=>{
@@ -92,7 +86,7 @@ router.post('/setting/:id',authMiddleware,async(req,res)=>{
 //IOT 센서 데이터 보냄
 router.post('/Sensor',async(req,res)=>{
     try {
-        const {device_id='SS501',temperature,water_quality,sendCommand} = req.body;
+        const {device_id='SS501',temperature,water_quality} = req.body;
         if(temperature == null || water_quality == null){
             return res.status(400).json({message:'데이터 전달에 실패하였습니다.'})
         }
