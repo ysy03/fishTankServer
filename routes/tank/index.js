@@ -13,12 +13,10 @@ router.post('/setting',authMiddleware,async(req,res)=>{
             max_temp,
             normal_waterquality,
             warning_waterquality,
-            tank_name,
             device_id} = req.body;
         const {user_id} = req.user;
         const response = await Tank.create({
             user_id,
-            tank_name,
             device_id,
             min_temp,
             max_temp,
@@ -26,7 +24,7 @@ router.post('/setting',authMiddleware,async(req,res)=>{
             warning_waterquality
         })
         addTank(response);
-        return res.sendStatus(204);
+        return res.status(201).json({device_id});
     } catch (error) {
         console.error(error.message);
         return res.status(error.status||500).json({message:'데이터 저장에 실패하였습니다.'})

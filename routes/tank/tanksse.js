@@ -274,6 +274,7 @@ async function loadTankCache(){
         }
     } catch (error) {
         console.log(`어항 정보 캐시 오류 ${error}`);
+        throw error;
     }
 }
 

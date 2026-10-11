@@ -9,12 +9,16 @@ var indexRouter = require('./routes/index');
 const startSensorSimulation = require('./routes/tank/schedual');
 const cors = require('cors');
 const multer = require('multer');
+const {loadTankCache} = require('./routes/tank/tanksse');
 const fs = require('fs');
 
 var app = express();
 
 sequelize.sync({force:false})
-    .then(()=>console.log('연결성공'))
+    .then(async()=>{
+      console.log('mysql연결 성공');
+      await loadTankCache();
+    })
     .catch((err)=>console.error(err));
 
 app.use(cors({

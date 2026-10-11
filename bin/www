@@ -3,7 +3,7 @@
 /**
  * Module dependencies.
  */
-const {loadTankCache} = require('../routes/tank/tanksse');
+
 
 var app = require('../app');
 var debug = require('debug')('backend:server');
@@ -32,8 +32,6 @@ server.on('listening', onListening);
 
 async function startServer() {
   try {
-    await loadTankCache();
-
     server.listen(port);
   } catch (error) {
     console.error('서버 초기화 실패:', error);
