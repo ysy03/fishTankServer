@@ -214,7 +214,7 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
 
             return {
                 ...data,
-                liked: myLikedIds.has(comment.comment_id)
+                isLiked: myLikedIds.has(comment.comment_id)
             };
         };
 
