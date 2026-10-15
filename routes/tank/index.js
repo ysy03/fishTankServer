@@ -7,7 +7,7 @@ const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache, ad
 const { sendToDevice } = require('../../socket');
 
 //온도,수질 지정
-router.post('/setting',authMiddleware,async(req,res)=>{
+router.post('/tank-setting',authMiddleware,async(req,res)=>{
     try {
         const {min_temp,
             max_temp,
