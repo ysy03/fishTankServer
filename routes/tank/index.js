@@ -269,5 +269,31 @@ router.post('/waterchange',devAuthMiddleware,async(req,res)=>{
     }
 })
 
+router.get('/alert',authMiddleware,async(req,res)=>{
+    try {
+        const {user_id} = req.user;
+        const tank = await Tank.findOne({where:{
+            user_id
+        }})
+        const today = new Date();
+        today.setDate(today.getDate() + 1)
+        today.setHours(0, 0, 0, 0);
+
+        const twoDaysago = new Date(today);
+        twoDaysago.setDate(today.getDate() - 2);
+        if(!tank){
+            return res.status(400).json({message:'저장한 기기를 발견하지 못했습니다.'})
+        }
+        const alert = await Alert.findAll({where:{device_id:tank.device_id,created_at:{
+            [Op.gte]: twoDaysago,
+            [Op.lt]: today
+        }}})
+        return res.status(200).json(alert);
+    } catch (error) {
+        console.error(error.message)
+        return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'});
+    }
+})
+
 
 module.exports = router;
