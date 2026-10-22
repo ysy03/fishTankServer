@@ -3,7 +3,6 @@ const router = app.Router();
 const {User,Post,Comment,CommentLike,Image} = require('../../models');
 const authMiddleware = require('../auth/authMiddleware');
 const { Op,fn,col } = require('sequelize');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 const upload = require('../uploaded/profileupload');
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +19,7 @@ router.get('/list',async (req,res) => {
                                 : [];
         if(keyword){
             where.title = {
-                [Op.like]: `${keyword}`
+                [Op.like]: `%${keyword}%`
             };
         }
         if(selectedFishTypes.length > 0){
@@ -31,8 +30,12 @@ router.get('/list',async (req,res) => {
 
         let datas = await Post.findAll({
             where,
-            attributes:['post_id','title','content','fish_type'],
-            include:{model:User,attributes:['nickname']},
+            attributes:['post_id','title','content','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
+            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
+            group:[
+                'Post.post_id',
+                'User.user_id'
+            ],
             order: [['created_at', 'DESC']]
         });
 
@@ -45,7 +48,7 @@ router.get('/list',async (req,res) => {
 })
 
 //내가 작성한 게시글 확인
-router.get('/mypost/data',devAuthMiddleware,async(req,res)=>{
+router.get('/mypost/data',authMiddleware,async(req,res)=>{
     const {fish_type,keyword} = req.query;
     let where = {}
     const selectedFishTypes = fish_type ? 
@@ -67,8 +70,13 @@ router.get('/mypost/data',devAuthMiddleware,async(req,res)=>{
         where.user_id = req.user.user_id;
         const datas = await Post.findAll({
             where,
-            attributes:['post_id','title','fish_type'],
-            include:{model:User,attributes:['nickname']}
+            attributes:['post_id','title','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
+            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
+            group:[
+                'Post.post_id',
+                'User.user_id'
+            ],
+            order: [['created_at', 'DESC']]
         })
         return res.json({datas,selectedFishTypes,keyword});
     } catch (error) {
@@ -101,7 +109,7 @@ router.post('/posts',authMiddleware,upload.array('images',4),async (req,res) => 
             )
         }
 
-        return res.status(200).json(data);   
+        return res.status(200).json({success:true});   
     } catch (error) {
         console.log(error);
         res.status(error.status||500).json({message:error.message||'에러가 발생하였습니다.'})
@@ -132,7 +140,7 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                             col('CommentLikes.commentlike_id')
                             ),
                             'likeCount'
-                    ]
+                    ],
                 ]
             },
             include:[
@@ -177,8 +185,43 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                 post_id:id
             }
         })
+        const imageDatas = images.map(image => {
+            const data = image.toJSON();
+
+            return {
+                ...data,
+                Image_url: `${req.protocol}://${req.get('host')}${data.Image_url}`
+            };
+        });
+        const allComments = [...commentDatas, ...replyData];
+        const myliked = await CommentLike.findAll({
+            where: {
+                user_id,
+                comment_id: {
+                    [Op.in]: allComments.map(comment => comment.comment_id)
+                }
+            },
+            attributes: ['comment_id'],
+            raw: true
+        });
+
+        const myLikedIds = new Set(
+            myliked.map(like => like.comment_id)
+        );
+
+        const addLiked = (comment) => {
+            const data = comment.toJSON();
+
+            return {
+                ...data,
+                isLiked: myLikedIds.has(comment.comment_id)
+            };
+        };
+
+        const comments = commentDatas.map(addLiked);
+        const replies = replyData.map(addLiked);
         const mine = user_id === Postdata.user_id;
-        res.json({mine,replyData,commentDatas,Postdata,images})
+        res.json({mine,replyData:replies,commentDatas:comments,Postdata,images:imageDatas})
     } catch (error) {
         console.log(error);
         res.json({message:'오류가 발생하였습니다.'})
@@ -187,7 +230,7 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
 
 //게시글 업데이트
 
-router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
+router.get('/update/:id',authMiddleware,async(req,res)=>{
     const {id} = req.params;
     try {
         const Postdata = await Post.findOne({where:{post_id:id},include:[{model:User}]});
@@ -202,7 +245,8 @@ router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
             throw err;
         }
         const image = await Image.findAll({where:{post_id:id}});
-        return res.status(200).json({Postdata,image});
+        const oridinalImage = `${req.protocol}://${req.get('host')}${image.Image_url}`;
+        return res.status(200).json({data:Postdata,image:oridinalImage});
     } catch (error) {
         return res.status(error.status || 500).json({
             message:error.message
@@ -210,7 +254,7 @@ router.get('/update/:id',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,res)=>{
+router.post('/update/:id',authMiddleware,upload.array('images',4),async(req,res)=>{
     const {id} = req.params;
     const images = req.files || [];
     console.log(images);
@@ -291,21 +335,21 @@ router.post('/update/:id',devAuthMiddleware,upload.array('images',4),async(req,r
         },{
             where: { post_id: id }
         })
-        return res.status(204).send()
+        return res.sendStatus(204);
     } catch (error) {
         return res.status(error.status||500).json({message:error.message||'서버에 문제가 발생하였습니다.'})
     }
 })
 
 //댓글
-router.post('/comment',devAuthMiddleware,async(req,res)=>{
+router.post('/comment',authMiddleware,async(req,res)=>{
     try {
-        const userId = req.user.user_id;
+        const {user_id} = req.user;
         const {post_id,content,commentId}  = req.body;
         const updatedData = await Comment.create({
             post_id,
             parent_id: commentId || null,
-            user_id:userId,
+            user_id,
             content
         })
         return res.status(200).json(updatedData);
@@ -316,7 +360,7 @@ router.post('/comment',devAuthMiddleware,async(req,res)=>{
 })
 
 
-router.post('/comment/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/comment/:id',authMiddleware,async(req,res)=>{
     try {
         const content = req.body.update;
         console.log(req.body);
@@ -328,7 +372,7 @@ router.post('/comment/:id',devAuthMiddleware,async(req,res)=>{
         }else{
             throw new Error('댓글 변경에 오류가 발생하였습니다.')
         }
-        return res.status(204).send();
+        return res.sendStatus(204);
     } catch (error) {
         return res.status(error.status).json({messgae:error.message||'에러가 발생하였습니다.'})
     }
@@ -336,41 +380,42 @@ router.post('/comment/:id',devAuthMiddleware,async(req,res)=>{
 })
 
 
-router.post('/commentLike/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/commentLike/:id',authMiddleware,async(req,res)=>{
     try {
         console.log('들어옴');
         const {id} = req.params;
-        const userId = req.user.user_id;
+        const {user_id} = req.user;
         let like; 
         const exLikeUser = await CommentLike.findOne({
             where:{
-                user_id:userId,
+                user_id,
                 comment_id:id
             }})
         if(exLikeUser){
             await CommentLike.destroy({
                 where:{
-                    user_id:userId,
+                    user_id:user_id,
                     comment_id:id
                 }
             })
             like = true;
         }else{
             await CommentLike.create({
-                user_id:userId,
+                user_id:user_id,
                 comment_id:id
             })
             like = false
         }
         return res.status(200).json({like});        
 ;    } catch (error) {
+        console.log(error.message);
         return res.status(error.status||500).json({message:error.message||'서버에 오류가 발생하였습니다.'});
     }
 })
 
 
 //게시글 삭제
-router.delete('/posts/:id',devAuthMiddleware,async(req,res)=>{
+router.delete('/posts/:id',authMiddleware,async(req,res)=>{
     console.log('들어감');
     try {
         const {id} = req.params;
@@ -413,7 +458,7 @@ router.delete('/posts/:id',devAuthMiddleware,async(req,res)=>{
     }
 })
 
-router.post('/deletecomment/:id',devAuthMiddleware,async(req,res)=>{
+router.post('/deletecomment/:id',authMiddleware,async(req,res)=>{
     try {
         const {id} = req.params;
         const comment = await Comment.findOne({where:{comment_id:id}});

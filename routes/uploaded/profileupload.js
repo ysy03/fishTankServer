@@ -20,12 +20,14 @@ const storage = multer.diskStorage({
 })
 
 const fileFilter = (req,file,cb) =>{
+    console.log(file);
     const allowedTypes = [
         'image/jpeg',
         'image/jpg',
         'image/png',
         'image/webp'
     ];
+    console.log('들어감')
     if (!allowedTypes.includes(file.mimetype)) {
         return cb(
             new Error('JPG, PNG, WEBP 이미지만 업로드할 수 있습니다.')

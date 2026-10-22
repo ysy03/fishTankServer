@@ -1,7 +1,7 @@
 FROM node:20-slim
 WORKDIR /app
 COPY package*.json .
-CMD [ "npm", "install" ]
+RUN npm ci
 EXPOSE 3000
 COPY . .
-CMD [ "node" "app.js" ]
+CMD ["npm", "start"]

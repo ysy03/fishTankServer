@@ -4,7 +4,7 @@ const {sensorState, resetSensorState} = require('./tanksse');
 const cron = require('node-cron');
 
 module.exports = () =>{
-    cron.schedule('* * * * *' , async()=>{
+    cron.schedule('0 * * * *' , async()=>{
         try {
             const sensorData = [];
             for(const [device_id,state] of sensorState){
@@ -27,8 +27,10 @@ module.exports = () =>{
         } catch (error) {
             console.log(`온도 저장 실패:${error}`);
         }
+    }, {
+        timezone: 'Asia/Seoul'
     })
-    cron.schedule("* * * * *",async ()=>{
+    cron.schedule("0 */12 * * *",async ()=>{
         try {
             const waterQualitys = []
             for(const [device_id,state] of sensorState){
@@ -48,7 +50,7 @@ module.exports = () =>{
         timezone: 'Asia/Seoul'
     })
 
-    cron.schedule('*/3 * * * *',async ()=>{
+    cron.schedule('5 0 * * *',async ()=>{
         try {
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -108,6 +110,8 @@ module.exports = () =>{
             console.error(error)
         }
         
+    }, {
+        timezone: 'Asia/Seoul'
     })
 
 }

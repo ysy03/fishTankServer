@@ -1,11 +1,10 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
-const {User,UserImage,Fishinfo} = require('../../models');
+const {User,UserImage,Tank} = require('../../models');
 const jwt = require('jsonwebtoken');
 const authmiddleware = require('../auth/authMiddleware');
 const authMiddleware = require('../auth/authMiddleware');
-const devAuthMiddleware = require('./devauthMiddleware');
 const upload = require('../uploaded/userupload');
 const fs = require('fs');
 const path = require('path');
@@ -83,9 +82,14 @@ router.post('/login',async(req,res)=>{
         await User.update({
             token:refreshtoken
         },{where:{user_id:exUser.user_id}})
-
+        const tank = await Tank.findOne({
+            where:{
+                user_id:exUser.user_id
+            }
+        })
+        const device_id = tank?.device_id;
         const exNickname = exUser?.nickname != null;
-        return res.status(200).json({exNickname,accesstoken,refreshtoken}); 
+        return res.status(200).json({user_id:exUser.user_id,exNickname,accesstoken,refreshtoken,device_id:device_id||null}); 
     } catch (error) {
         console.log(error);
         return res.status(error.status || 500).json({
@@ -159,7 +163,6 @@ router.get('/myinfo',authMiddleware,async(req,res)=>{
         const ImageUrl = image ? 
             `${req.protocol}://${req.get('host')}${image.Image_url}`:
             `${req.protocol}://${req.get('host')}/uploads/user/default.png`;
-        console
         return res.status(200).json({user,image:ImageUrl});   
     } catch (error) {
         return res.status(500).json({
@@ -196,27 +199,40 @@ router.post('/profile',authMiddleware,upload.single('image'),async(req,res)=>{
             }
         }
         
-        if(image){
-            imageurl = `/uploads/user/${image.filename}`
+        if (image) {
+            const imageurl = `/uploads/user/${image.filename}`;
+
             const userImage = await UserImage.findOne({
-                where:{
-                    user_id:req.user.user_id
+                where: {
+                    user_id: req.user.user_id
                 }
-            })
-            if(userImage){
+            });
+
+            if (userImage) {
+                // 기존 이미지 주소 먼저 저장
+                const oldImageUrl = userImage.Image_url;
+
+                // DB를 새 이미지 주소로 변경
                 await userImage.update({
-                    Image_url:imageurl
-                })
-                fs.unlink(path.join(__dirname,'../..',userImage.Image_url),(err)=>{
-                    if (err && err.code !== 'ENOENT') {
-                        console.error(err);
-                    }
-                })
-            }else{
+                    Image_url: imageurl
+                });
+
+                // 기존 이미지 삭제
+                if (oldImageUrl) {
+                    fs.unlink(
+                        path.join(__dirname, '../..', oldImageUrl),
+                        (err) => {
+                            if (err && err.code !== 'ENOENT') {
+                                console.error(err);
+                            }
+                        }
+                    );
+                }
+            } else {
                 await UserImage.create({
-                    user_id:req.user.user_id,
-                    Image_url:imageurl
-                })
+                    user_id: req.user.user_id,
+                    Image_url: imageurl
+                });
             }
         }
 

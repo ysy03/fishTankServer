@@ -5,7 +5,7 @@ module.exports = (sequelize,DataTypes)=>{
 
     class Daily extends Model{
         static associate(db){
-            db.Daily.belongsTo(db.Tank,{foreignkey:'device_id',sourceKey:'device_id'})
+            db.Daily.belongsTo(db.Tank,{foreignKey:'device_id',sourceKey:'device_id'})
         }
     }
 
@@ -25,15 +25,15 @@ module.exports = (sequelize,DataTypes)=>{
             },
             onDelete:'CASCADE'
         },
-        temp_max:{
+        max_temperature:{
             type:DataTypes.DOUBLE,
             allowNull:false
         },
-        temp_min:{
+        min_temperature:{
             type:DataTypes.DOUBLE,
             allowNull:false
         },
-        temp_avg:{
+        avg_temperature:{
             type:DataTypes.DOUBLE,
             allowNull:false
         },
@@ -41,7 +41,7 @@ module.exports = (sequelize,DataTypes)=>{
             type:DataTypes.INTEGER,
             allowNull:false
         },
-        created_at:{
+        daily:{
             type:DataTypes.DATE,
             allowNull:false
         }

@@ -1,11 +1,11 @@
 const app = require('express');
-const devAuthMiddleware = require('../auth/devauthMiddleware');
 const router = app.Router();
 const {ChatbotRoom,ChatbotMessage, sequelize} = require('../../models');
 const { GenerateResponse } = require('./chatbotSetting');
+const authMiddleware = require('../auth/authMiddleware');
 
 
-router.post('/',devAuthMiddleware,async (req,res)=>{
+router.post('/',authMiddleware,async (req,res)=>{
     try {
         const {user_id} = req.user;
         let chatroom = await ChatbotRoom.findOne({where:{user_id}});
@@ -18,7 +18,7 @@ router.post('/',devAuthMiddleware,async (req,res)=>{
     }
 })
 
-router.get('/rooms/:id',devAuthMiddleware,async(req,res)=>{
+router.get('/rooms/:id',authMiddleware,async(req,res)=>{
     try {
         const {id} = req.params;
         const {user_id} = req.user;
@@ -36,17 +36,19 @@ router.get('/rooms/:id',devAuthMiddleware,async(req,res)=>{
                 chatbotroom_id:id,
             },
             order:[
-                ['created_at','DESC']
+                ['created_at','ASC']
             ],
             limit:20
         })
-        return res.status(200).json(message.reverse());
+        console.log(message);
+        return res.status(200).json(message);
     } catch (error) {
+        console.log(error);
         return res.status(error.status||500).json({message:'가져오는 것에 실패하였습니다.'})
     }
 })
 
-router.post('/rooms/:id/message',devAuthMiddleware,async(req,res)=>{
+router.post('/rooms/:id/message',authMiddleware,async(req,res)=>{
     let t;
     try {
         t = await sequelize.transaction();
@@ -71,24 +73,22 @@ router.post('/rooms/:id/message',devAuthMiddleware,async(req,res)=>{
             error.status = 400;
             throw error
         }//답변 만들기 실패할 경우
-        
-        const [userMessage,modelMessage] = await Promise.all([
-            ChatbotMessage.create({
+        await ChatbotMessage.create({
                 chatbotroom_id:id,
                 user_id,
                 message,
                 role:'user'
-            },{ transaction : t }),//유저 질문
+            },{ transaction : t });
+        const modelMessage = await //유저 질문
             ChatbotMessage.create({
                 chatbotroom_id:id,
                 user_id,
                 message:response,
                 role:'model'
-            },{ transaction : t})
-        ])
+            },{ transaction : t});
         await t.commit();
         console.log(modelMessage);
-        return res.status(200).json({response});
+        return res.status(200).json({message:response});
     } catch (error) {
         if(t && !t.finished){
             await t.rollback();

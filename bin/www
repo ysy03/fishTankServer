@@ -4,9 +4,11 @@
  * Module dependencies.
  */
 
+
 var app = require('../app');
 var debug = require('debug')('backend:server');
 var http = require('http');
+const {connectWs} = require('../socket/index');
 
 /**
  * Get port from environment and store in Express.
@@ -20,14 +22,24 @@ app.set('port', port);
  */
 
 var server = http.createServer(app);
-
+connectWs(server);
 /**
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
+
+async function startServer() {
+  try {
+    server.listen(port);
+  } catch (error) {
+    console.error('서버 초기화 실패:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 /**
  * Normalize a port into a number, string, or false.

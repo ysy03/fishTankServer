@@ -30,7 +30,7 @@ module.exports = (sequelize,DataTypes) =>{
             sequelize,
             modelName:'ChatbotRoom',
             tableName:'chatbotroom',
-            timestamps:true
+            timestamps:false
     })
 
     

@@ -3,12 +3,15 @@ const {Tank,Alert} = require('../../models');
 const sensorState = new Map();//최고온도,최저온도 저장
 const clients = new Map();//탱크 연결
 const tankcache = new Map();//탱크 정보
-const alertState = new Map();//알림 지정
+const TempalertState = new Map();//알림 지정
+const WqalertState = new Map();
+const commandState = new Map();
 
 function addClients(device_id,res){
     console.log('들어옴');
     if(!clients.has(device_id)){
         clients.set(device_id,new Set());
+        
     }
 
     clients.get(device_id).add(res);
@@ -32,7 +35,9 @@ function removeCLients(device_id,res){
 
 async function sendToUser(device_id,data){
     let tank = tankcache.get(device_id);
-    console.log(tank);
+    if(!clients.has(device_id)){
+        return;
+    }
     if (!tank) {
         console.log(`어항 설정 없음: ${device_id}`);
         const exTank = await Tank.findOne({where:{device_id}});
@@ -70,40 +75,42 @@ async function sendToUser(device_id,data){
 
 
 async function inspectTemp(device_id, type, current_state, tempLevel) {
-    const state = alertState.get(device_id);
+    let state = TempalertState.get(device_id);
 
-        // 위험 상태
+    const alert_at = new Date().now;
+    const oneHour = 60 * 60 * 1000;
     if (current_state === 'dangerous') {
-
-        // 이미 같은 위험 상태라면 중복 생성 안 함
-        if (state.temp_state === current_state) {
-            state.temp_pending_count = 0;
-            return;
-        }
-
-        // 새로운 위험 상태
-        await Alert.create({
+        if(state.temp_state == 'normal'){
+            await Alert.create({
             device_id,
-            type: 'temp',
-            status: tempLevel,
-            detail: {
-                temperature: state.temperature
+            type:type,                                                                                                                                                                                                                                                                                                                              
+            status:tempLevel,
+            detail:{
+                'started_at':alert_at
             }
-        });
-
-        state.temp_state = current_state;
-        state.temp_pending_count = 0;
-        sendSSE(device_id,{
-            type:'warning',
-            data:'온도가 이상해요'
         })
+        state.temp_state = 'dangerous';
+        state.temp_time = alert_at
+        sendSSE(device_id,{
+            type:type,
+            data: tempLevel == 'low' ? 'low' : 'high'
+        })}
+        else{
+            if(alert_at - state.temp_time > oneHour){
+                sendSSE(device_id,{
+                    type:type,
+                    data: tempLevel == 'low' ? 'low' : 'high'
+                })
+            }
+        }
         return;
+        
     }
     console.log("전송 데이터:", data);
     const message = `data: ${JSON.stringify(data)}\n\n`
 
     // 정상 상태
-    if (current_state === 'normal') {
+    else{
 
         // 이미 정상이면 할 거 없음
         if (state.temp_state === 'normal') {
@@ -123,31 +130,27 @@ async function inspectTemp(device_id, type, current_state, tempLevel) {
             where: {
                 device_id,
                 type: 'temp',
-                status: state.temp_state
             },
             order: [['created_at', 'DESC']]
         });
 
         if (alertTemp) {
-            const durationSeconds = Math.floor(
-                (Date.now() - new Date(alertTemp.created_at).getTime()) / 1000
-            );
-
+            state.temp_state = 'normal';
+            const ended_at= new Date().now;
             await alertTemp.update({
                 detail: {
-                    duration: durationSeconds
+                    ...alertTemp.detail,
+                    'ended_at':ended_at
                 }
             });
         }
-
-        state.temp_state = 'normal';
-        state.temp_pending_count = 0;
     }
-    
 }
+    
+
 
 async function inspectWQ(device_id,type,current_state) {
-    const state = alertState.get(device_id);
+    const state = WqalertState.get(device_id);
     if(current_state === 'dangerous'){
         if(state.waterquality_state === 'dangerous'){
             state.wq_pending_count = 0;
@@ -162,7 +165,7 @@ async function inspectWQ(device_id,type,current_state) {
             }
         });
         sendSSE(device_id,{
-            type:'warning',
+            type:'waterquality',
             data:'수질이 이상해요'
         })
         state.waterquality_state = 'dangerous'
@@ -177,7 +180,6 @@ async function inspectWQ(device_id,type,current_state) {
                 where:{
                     device_id,
                     type:'waterquality',
-                    status:state.waterquality_state
                 },
                 order: [['created_at', 'DESC']]
             })
@@ -262,15 +264,19 @@ async function loadTankCache(){
                 normal_waterquality:tank.normal_waterquality,
                 warning_waterquality:tank.warning_waterquality
             })
-            alertState.set(tank.device_id,{
+            TempalertState.set(tank.device_id,{
                 temp_state:'normal',
-                waterquality_state:'normal',
-                feed_state:'normal',
-                waterchange_state:'normal'
-            })
+                temp_time:null,
+                temp_pending_count:0,
+            });
+            WqalertState.set(tank.device_id,{
+                wq_state:'normal',
+                wq_pending_count:0
+            });
         }
     } catch (error) {
         console.log(`어항 정보 캐시 오류 ${error}`);
+        throw error;
     }
 }
 
@@ -282,21 +288,37 @@ function addTank(tank_info){
         normal_waterquality:tank_info.normal_waterquality,
         warning_waterquality:tank_info.warning_waterquality
     }),
-    alertState.set(tank_info.device_id,{
+    TempalertState.set(tank_info.device_id,{
         temp_state:'normal',
         temp_pending_count:0,
-        waterquality_state:'normal',
+    }),
+    WqalertState.set(tank_info.device_id,{
+        wq_state:'normal',
         wq_pending_count:0
     })
+    commandState.set(tank_info.device_id,{command:null});
 }
 
 function updateTankcache(tank_info){
+    console.log(tank_info);
     tankcache.set(tank_info.device_id,{
         min_temp:tank_info.min_temp,
         max_temp:tank_info.max_temp,
         normal_waterquality:tank_info.normal_waterquality,
         warning_waterquality:tank_info.warning_waterquality
     })
+}
+
+function setCommand(device_id,data = {}){
+    const Command = commandState.get(device_id);
+    if(!Command){
+        return;
+    }
+    Command.command = {
+        type: data.type ?? null,
+        data: data.data ?? null,
+        status: 'pending'
+    }
 }
 
 function sendSSE(device_id, data) {
@@ -313,12 +335,48 @@ function sendSSE(device_id, data) {
     });
 }
 
+function sendFeedResult(device_id, success) {
+    const client = clients.get(device_id);
+
+    if (!client) return;
+
+    for (const res of client) {
+        res.write(`data: ${JSON.stringify({
+            type: 'feed',
+            data: success ? 'success' : 'failed'
+        })}\n\n`);
+    }
+}
+
+
+function sendWqResult(device_id, success) {
+    const client = clients.get(device_id);
+
+    if (!client) return;
+
+    for (const res of client) {
+        res.write(`data: ${JSON.stringify({
+            type: 'waterChange',
+            data: success ? 'success' : 'failed'
+        })}\n\n`);
+    }
+}
+
+
 
 module.exports = {
     addClients,
     removeCLients,
     sendToUser,
     updateSensor,
+    updateTankcache,
     resetSensorState,
-    sensorState
+    sendSSE,
+    addTank,
+    loadTankCache,
+    sensorState,
+    commandState,
+    setCommand,
+    sendFeedResult,
+    sendWqResult
 }
