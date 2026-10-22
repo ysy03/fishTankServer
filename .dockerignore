@@ -1,7 +1,16 @@
+<<<<<<< HEAD
 node_modules
 .git
 .gitignore
 .env
 .vscode
 uploads
+=======
+node_modules
+.git
+.gitignore
+.env
+.vscode
+uploads
+>>>>>>> origin/main
 npm-debug.log

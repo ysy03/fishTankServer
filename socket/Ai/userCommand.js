@@ -1,4 +1,5 @@
 const {Tank} = require('../../models/index');
+const WebSocket = require('ws');
 
 async function speciesCommand(ws,ai) {
     try {
