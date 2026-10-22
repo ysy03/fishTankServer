@@ -4,16 +4,16 @@ const { Op, col,fn } = require('sequelize');
 const authMiddleware = require('../auth/authMiddleware');
 const router = app.Router();
 
-router.get('/:date',authMiddleware, async(req,res)=>{
+router.get('/',authMiddleware, async(req,res)=>{
     try {
-        const {date} = req.params;
+        const {day} = req.query;
         const {user_id} = req.user;//유저 정보 가져옴
-        if(!date){
+        if(!day){
             return res.status(400).json({message:'날짜를 입력해주세요'})
         }
         const today = new Date();
         today.setHours(0,0,0,0);
-        if(date >= today){
+        if(day >= today){
             return res.status(200).json({exist:false,message:'아직 기록한 적이 없는 날짜입니다.'})
         }
         const tank = await Tank.findOne({
@@ -24,8 +24,8 @@ router.get('/:date',authMiddleware, async(req,res)=>{
         if(!tank){
             return res.status(403).json({message:'유저가 등록한 어항이 아닙니다.'})
         }
-        const this_day = new Date(date);
-        const next_day = new Date(date);
+        const this_day = new Date(day);
+        const next_day = new Date(day);
         this_day.setHours(0,0,0,0);
         next_day.setDate(next_day.getDate()+1);
         next_day.setHours(0,0,0,0);//날짜 지정
