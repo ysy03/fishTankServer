@@ -1,6 +1,6 @@
 const app = require('express');
 const router = app.Router();
-const {User,Post,Comment,CommentLike,Image} = require('../../models');
+const {User,Post,Comment,CommentLike,Image,UserImage} = require('../../models');
 const authMiddleware = require('../auth/authMiddleware');
 const { Op,fn,col } = require('sequelize');
 const upload = require('../uploaded/profileupload');
@@ -31,10 +31,12 @@ router.get('/list',async (req,res) => {
         let datas = await Post.findAll({
             where,
             attributes:['post_id','title','content','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
-            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
+            include:[{model:User,attributes:['nickname'],include:[{model:UserImage,attributes:['Image_url']}]},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
             group:[
                 'Post.post_id',
-                'User.user_id'
+                'User.user_id',
+                'User->UserImage.Image_id',
+                'User->UserImage.Image_url'
             ],
             order: [['created_at', 'DESC']]
         });
@@ -71,10 +73,12 @@ router.get('/mypost/data',authMiddleware,async(req,res)=>{
         const datas = await Post.findAll({
             where,
             attributes:['post_id','title','fish_type',[fn('count',col('Comments.comment_id')),'comment_count']],
-            include:[{model:User,attributes:['nickname']},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
+            include:[{model:User,attributes:['nickname'],include:[{model:UserImage,attributes:['Image_url']}]},{model:Comment,attributes:[],where:{is_deleted:false},required:false}],
             group:[
                 'Post.post_id',
-                'User.user_id'
+                'User.user_id',
+                'User->UserImage.Image_id',
+                'User->UserImage.Image_url'
             ],
             order: [['created_at', 'DESC']]
         })
@@ -127,7 +131,7 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                 post_id:id
             },
             include:[
-                {model:User,attributes:['user_id','nickname']}
+                {model:User,attributes:['user_id','nickname'],include:[{model:UserImage,attributes:['Image_url']}]}
             ]
         })
         const commentDatas = await Comment.findAll({
@@ -144,12 +148,14 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                 ]
             },
             include:[
-                {model:User,attributes:['user_id','nickname']},
+                {model:User,attributes:['user_id','nickname'],include:[{model:UserImage,attributes:['Image_url']}]},
                 {model:CommentLike,attributes:[]},
             ],
             group:[
                 'Comment.comment_id',
                 'User.user_id',
+                'User->UserImage.Image_id',
+                'User->UserImage.Image_url'
             ],
             order:[['created_at','ASC']]
         })
@@ -171,12 +177,14 @@ router.get('/posts/:id',authMiddleware,async (req,res) => {
                 ]
             },
             include:[
-                {model:User,attributes:['user_id','nickname']},
+                {model:User,attributes:['user_id','nickname'],include:[{model:UserImage,attributes:['Image_url']}]},
                 {model:CommentLike,attributes:[]},
             ],
             group:[
                 'Comment.comment_id',
                 'User.user_id',
+                'User->UserImage.Image_id',
+                'User->UserImage.Image_url'
             ],
             order:[['created_at','ASC']]
         })
