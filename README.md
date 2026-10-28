@@ -5,8 +5,8 @@
 ## 팀 구성
 |개발자|기능 담당|
 |---|---|
-|김서원|IoT기능 개발,프론트엔드 UI개발|
-|이다경|IoT기능 개발, 물고기 행동 분석 AI개발 및 AI서버 담당|
+|김서원(팀장)|IoT기능 개발,프론트엔드 UI개발|
+|이다경|IoT기능 개발, 물고기 행동 분석 AI개발 및 AI서버 담당, 프론트엔드 UI개발 보조|
 |유승엽|백엔드 서버 개발,프론트엔드 UI개발 보조|
 
 
@@ -50,6 +50,60 @@
 |기능|설명|
 |---|---|
 |로그인|해당 시스템을 이용하려는 사람들|
+
+### 데이터 베이스 설계
+
+### API 명세서
+
+### 담당 역할 및 기여 내용
+
+### 트러블 슈팅
+
+### 실행 방법
+---
+#### 1. 프로젝트 다운로드 하기
+git clone <repository-url>
+cd <project-directory>
+
+#### 2. 환경변수 설정
+.env파일 만든 다음 해당 내용 입력
+
+```
+DB_USERNAME = <DB_USERNAME>  
+DB_PASSWORD = <DB_PASSWORD>  
+DB_DATABSENAME = <DB_DATABASENAME>  
+DB_HOST = <DB_HOST>
+
+chatbot_apiKey = <GEMINI_API_KEY>
+
+JWT_SECRET = <JWT_SECRET>
+JWT_REFRESH = <JWT_REFRESH>
+```
+#### 3.실행 방법
+서버는 크게 Node.js환경와 Docker환경으로 실행할 수 있습니다.
+
+##### 3-1.Node.js 환경
+```
+npm install  
+npm run start
+```
+##### 3-2.Docker 환경
+```docker build -t <Project-Name> .```    
+  build:프로젝트가 돌아가는 환경을 이미지형태로 제작합니다.  
+  -t:프로젝트 이름을 지정해줍니다.  
+  '.':이미지에 들어갈 재료를 표시해줍니다.
+
+
+```docker run -d <Project-Name> --env-file .env -p <로컬환경 포트번호>:<설정한 포트번호> ```  
+  run:제작한 이미지를 바탕으로 실행하는 환경인 컨테이너를 제작한 후 실행하게 합니다.  
+  -p:포트번호를 지정해줍니다.  
+  -d:백그라운드 환경에서 돌아가게 합니다.  
+  --env-file:환경설정 파일을 가져와줍니다.
+
+
+
+
+### 개선 사항 및 향후 계획
 
 
 
