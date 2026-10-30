@@ -169,7 +169,7 @@ npm run start
   '.':이미지에 들어갈 재료를 표시해줍니다.
 
 
-```docker run -d <Project-Name> --env-file .env -p <로컬환경 포트번호>:<설정한 포트번호> ```  
+```docker run -d --name <Project-Name> --env-file .env -p <로컬환경 포트번호>:<설정한 포트번호> ```  
   run:제작한 이미지를 바탕으로 실행하는 환경인 컨테이너를 제작한 후 실행하게 합니다.  
   -p:포트번호를 지정해줍니다.  
   -d:백그라운드 환경에서 돌아가게 합니다.  
