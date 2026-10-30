@@ -137,8 +137,8 @@ fishTankServer/
 ### 실행 방법
 ---
 #### 1. 프로젝트 다운로드 하기
-git clone <repository-url>
-cd <project-directory>
+git clone https://github.com/ysy03/fishTankServer.git 
+cd fishTankServer
 
 #### 2. 환경변수 설정
 .env파일 만든 다음 해당 내용 입력
