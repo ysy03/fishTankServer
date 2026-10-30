@@ -20,8 +20,9 @@
 6. API 명세
 7. 담당 역할 및 기여 내용
 8. 트러블슈팅
-9. 실행 및 배포 방법
-10. 개선 사항 및 향후 계획
+9. 프로젝트 구조
+10. 실행 방법
+11. 개선 사항 및 향후 계획
 
 
 ### 개발 배경 및 목적
@@ -58,6 +59,80 @@
 ### 담당 역할 및 기여 내용
 
 ### 트러블 슈팅
+
+### 프로젝트 구조
+## 프로젝트 구조
+
+```text
+fishTankServer/
+├── bin/
+│   └── www                     # HTTP 서버 실행 및 WebSocket 연결
+│
+├── config/
+│   └── config.js               # Sequelize 데이터베이스 연결 설정
+│
+├── models/                     # Sequelize 모델 및 테이블 관계 정의
+│   ├── index.js                # 모델 초기화 및 연관 관계 설정
+│   ├── user.js                 # 사용자
+│   ├── userimage.js            # 프로필 이미지
+│   ├── tank.js                 # 어항 및 관리 기준값
+│   ├── sensor.js               # 수온 기록
+│   ├── waterquality.js         # 수질 기록
+│   ├── daily.js                # 일일 요약
+│   ├── FeederLog.js            # 먹이 지급 기록
+│   ├── waterchange.js          # 환수 기록
+│   ├── alert.js                # 경고 알림
+│   ├── Fishinfo.js             # 사육 중인 물고기 정보
+│   ├── post.js                 # 커뮤니티 게시글
+│   ├── image.js                # 게시글 이미지
+│   ├── comment.js              # 댓글 및 답글
+│   ├── commentLike.js          # 댓글 좋아요
+│   ├── chatbotRoom.js          # 챗봇 대화방
+│   ├── chatbotmessage.js       # 챗봇 대화 기록
+│   └── aiAnalyze.js            # AI 분석 모델
+│
+├── migrations/                 # 데이터베이스 스키마 변경 이력
+│
+├── routes/                     # HTTP API 라우터
+│   ├── index.js                # 기능별 라우터 연결
+│   ├── auth/
+│   │   ├── index.js            # 소셜 로그인, 토큰 재발급, 프로필 관리
+│   │   └── authMiddleware.js   # JWT 액세스 토큰 검증
+│   ├── tank/
+│   │   ├── index.js            # 어항 설정, 센서 수신, 알림 조회
+│   │   ├── tanksse.js          # 센서 캐시, 최고·최저 수온, SSE 및 경고 처리
+│   │   └── schedual.js         # 센서·수질 주기 저장 및 일일 요약
+│   ├── daily/
+│   │   └── index.js            # 날짜별 일지 조회
+│   ├── fishinfo/
+│   │   └── index.js            # 물고기 정보 조회 및 저장
+│   ├── communty/
+│   │   └── index.js            # 게시글, 댓글, 좋아요 관리
+│   ├── chatbot/
+│   │   ├── index.js            # 대화방 및 메시지 API
+│   │   └── chatbotSetting.js   # AI 답변 생성
+│   └── uploaded/
+│       ├── userupload.js       # 프로필 이미지 업로드 설정
+│       └── profileupload.js    # 게시글 이미지 업로드 설정
+│
+├── socket/                     # WebSocket 통신 및 명령 처리
+│   ├── index.js                # 사용자·IoT·AI 연결 등록 및 메시지 분기
+│   ├── feed.js                 # 먹이 지급 명령 및 결과 처리
+│   ├── waterChange.js          # 환수 명령 및 결과 처리
+│   └── Ai/
+│       ├── userCommand.js      # AI 서버에 어종 분석 요청
+│       └── AiResult.js         # 어종·활동 분석 결과를 사용자에게 전달
+│
+├──uploads/                     #업로드 이미지 저장소
+│  ├──post                      #게시판에 올릴 사진 저장소
+│  └──user                      #유저 프로필 올릴 사진 저장소
+│
+├── app.js                      # Express 앱, 미들웨어 및 라우터 설정
+├── Dockerfile                  # 서버 컨테이너 이미지 빌드 설정
+├── package.json                # 의존성 및 실행 스크립트
+├── package-lock.json           # 의존성 버전 고정
+└── README.md                   # 프로젝트 소개 및 실행 안내
+```
 
 ### 실행 방법
 ---
