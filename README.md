@@ -55,8 +55,9 @@
 ### 데이터 베이스 설계
 
 ### API 명세서
-  [SwaggerApi명세서]:(http://localhost:3000/api-docs)
-  pdf파일은 추후에 올릴 예정
+  + [SwaggerApi명세서](http://localhost:3000/api-docs) 
+    + (백엔드 서버 실행 후 확인 가능)
+  + pdf파일은 추후에 올릴 예정
 
 ### 담당 역할 및 기여 내용
 
