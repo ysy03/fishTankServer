@@ -36,12 +36,12 @@ router.get('/rooms/:id',authMiddleware,async(req,res)=>{
                 chatbotroom_id:id,
             },
             order:[
-                ['created_at','ASC']
+                ['created_at','DESC']
             ],
             limit:20
         })
         console.log(message);
-        return res.status(200).json(message);
+        return res.status(200).json(message.reverse());
     } catch (error) {
         console.log(error);
         return res.status(error.status||500).json({message:'가져오는 것에 실패하였습니다.'})
@@ -51,7 +51,6 @@ router.get('/rooms/:id',authMiddleware,async(req,res)=>{
 router.post('/rooms/:id/message',authMiddleware,async(req,res)=>{
     let t;
     try {
-        t = await sequelize.transaction();
         const {id} = req.params;
         const {user_id} = req.user;
         const {message} = req.body;
@@ -73,6 +72,7 @@ router.post('/rooms/:id/message',authMiddleware,async(req,res)=>{
             error.status = 400;
             throw error
         }//답변 만들기 실패할 경우
+        t = await sequelize.transaction();
         await ChatbotMessage.create({
                 chatbotroom_id:id,
                 user_id,

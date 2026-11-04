@@ -8,22 +8,6 @@ const authMiddleware = require('../auth/authMiddleware');
 const upload = require('../uploaded/userupload');
 const fs = require('fs');
 const path = require('path');
-
-router.get('/',async(req,res)=>{
-    //로그인 되어있는 상태인지 확인
-    const token = req.cookies.accessToken
-    if(token){
-        return res.send(
-            `<script>
-                alert('이미 로그인이 되어있는 상태입니다.')
-                window.location.href = '/api/index';
-            </script>`
-        )
-    }
-    res.render('index',{title:'hello'});
-})
-
-
 router.post('/login',async(req,res)=>{
     try {
         const {accesstoken:givenAccessToken,provider} = req.body;

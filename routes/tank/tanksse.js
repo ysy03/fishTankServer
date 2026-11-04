@@ -218,12 +218,12 @@ function updateSensor(device_id,temperature,water_quality){
     state.temperature = temperature;
     state.water_quality = water_quality;
 
-    if(temperature > state.max_temp){
+    if(temperature > state.max_temp || temperature < 40){
         state.max_temp = temperature;
         state.max_temp_at = date
     }
 
-    if(temperature < state.min_temp){
+    if(temperature < state.min_temp || temperature > 0){
         state.min_temp = temperature;
         state.min_temp_at = date;
     }

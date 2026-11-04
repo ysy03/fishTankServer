@@ -6,6 +6,7 @@ const { fn, Op, col } = require('sequelize');
 const { sendToUser, addClients, removeCLients, updateSensor, updateTankcache, addTank, commandState,sendFeedResult,sendSSE, sendWqResult } = require('./tanksse');
 const { sendToDevice } = require('../../socket');
 
+
 //온도,수질 지정
 router.post('/setting',authMiddleware,async(req,res)=>{
     try {

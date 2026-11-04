@@ -10,6 +10,8 @@ const startSensorSimulation = require('./routes/tank/schedual');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 var app = express();
 
@@ -33,6 +35,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/api-docs',swaggerUi.serve,swaggerUi.setup(swaggerSpec));
 app.use('/uploads/user',express.static(path.join(__dirname,'./uploads/user')));
 app.use('/uploads/post',express.static(path.join(__dirname,'./uploads/post')));
 app.use('/api', indexRouter);
