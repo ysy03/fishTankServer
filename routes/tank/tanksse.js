@@ -45,30 +45,28 @@ async function sendToUser(device_id,data){
             console.log('해당 어항이 저장되어있지 않습니다.');
             return;
         }  
-        addTank({
-            device_id,
-            min_temp:23,
-            max_temp:25,
-            normal_waterquality:250,
-            warning_waterquality:700
-        })
-        tank = tankcache.get(device_id);
     }
-    if(tank.min_temp > data.temperature){
-        inspectTemp(device_id,'temp','dangerous','low')
-    }else if(tank.max_temp < data.temperature){
-        inspectTemp(device_id,'temp','dangerous','high');
-    }else{
-        inspectTemp(device_id,'temp','normal',null);
+    const validTemp = typeof Number(data.temperature)&&
+                        Number.isFinite(data.temperature)&&
+                        data.temperature > 0 &&
+                        data.temperature < 50;
+    if(validTemp){
+        if(tank.min_temp > data.temperature){
+            await inspectTemp(device_id,'temp','dangerous','low')
+        }else if(tank.max_temp < data.temperature){
+            await inspectTemp(device_id,'temp','dangerous','high');
+        }else{
+            await inspectTemp(device_id,'temp','normal',null);
+        }
     }
     if(tank.warning_waterquality < data.water_quality ){
-        inspectWQ(device_id,'waterquality','dangerous');
+        await inspectWQ(device_id,'waterquality','dangerous');
     }else {
-        inspectWQ(device_id,'waterquality','normal');
+        await inspectWQ(device_id,'waterquality','normal');
     }
     sendSSE(device_id,{
         type:'sensor',
-        data
+        data:{...data,validTemp}
     })
 }
 

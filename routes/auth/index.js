@@ -8,6 +8,7 @@ const authMiddleware = require('../auth/authMiddleware');
 const upload = require('../uploaded/userupload');
 const fs = require('fs');
 const path = require('path');
+
 router.post('/login',async(req,res)=>{
     try {
         const {accesstoken:givenAccessToken,provider} = req.body;

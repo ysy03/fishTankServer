@@ -13,12 +13,11 @@
 ### 개요
 ---
 1. 기술 스택
-2. 데이터베이스 설계 관계도
-3. API 명세
-4. 담당 역할 및 기여 내용
-5. 트러블슈팅
-6. 프로젝트 구조
-7. 실행 방법
+2. API 명세
+3. 담당 역할 및 기여 내용
+4. 트러블슈팅
+5. 프로젝트 구조
+6. 실행 방법
 
 
 ### 기술 스택
@@ -32,10 +31,6 @@
 |인프라|AWS EC2,Docker,Docker Compose|
 |버전 관리|git,github|
 
-
-### 데이터 베이스 설계 관계도
----
-+추후 올릴 예정
 
 
 ### API 명세서
@@ -149,23 +144,14 @@ fishTankServer/
 ### 실행 방법
 ---
 #### 1. 프로젝트 다운로드 하기
-git clone https://github.com/ysy03/fishTankServer.git  
-cd fishTankServer
+
+    git clone https://github.com/ysy03/fishTankServer.git  
+    cd fishTankServer
 
 #### 2. 환경변수 설정
-.env파일 만든 다음 해당 내용 입력
 
-```
-DB_USERNAME = <DB_USERNAME>  
-DB_PASSWORD = <DB_PASSWORD>  
-DB_DATABSENAME = <DB_DATABASENAME>  
-DB_HOST = <DB_HOST>
+    .env파일 만든 다음 .env-example.text내용을 참고하여 작성
 
-chatbot_apiKey = <GEMINI_API_KEY>
-
-JWT_SECRET = <JWT_SECRET>
-JWT_REFRESH = <JWT_REFRESH>
-```
 #### 3.실행 방법
 서버는 크게 Node.js환경와 Docker환경으로 실행할 수 있습니다.(주의 mysql 먼저 실행 한 이후에 실행해주셔야 합니다.)
 
@@ -175,13 +161,14 @@ npm install
 npm run start
 ```
 ##### 3-2.Docker 환경
-```docker build -t <Project-Name> .```    
+  
+    docker build -t <Project-Name> .  
   build:프로젝트가 돌아가는 환경을 이미지형태로 제작합니다.  
   -t:프로젝트 이름을 지정해줍니다.  
   '.':이미지에 들어갈 재료를 표시해줍니다.
 
 
-```docker run -d --name <Project-Name> --env-file .env -p <로컬환경 포트번호>:3000 <Project-Name>```  
+    docker run -d --name <Project-Name> --env-file .env -p <로컬환경 포트번호>:3000 <Project-Name>  
   run:제작한 이미지를 바탕으로 실행하는 환경인 컨테이너를 제작한 후 실행하게 합니다.  
   -p:포트번호를 지정해줍니다.  
   -d:백그라운드 환경에서 돌아가게 합니다.  
