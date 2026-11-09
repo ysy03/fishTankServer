@@ -49,7 +49,7 @@ async function sendToUser(device_id,data){
     const validTemp = typeof Number(data.temperature)&&
                         Number.isFinite(data.temperature)&&
                         data.temperature > 0 &&
-                        data.temperature < 50;
+                        data.temperature < 70;
     if(validTemp){
         if(tank.min_temp > data.temperature){
             await inspectTemp(device_id,'temp','dangerous','low')
@@ -200,28 +200,30 @@ function updateSensor(device_id,temperature,water_quality){
 
     if(!state){
         state = {
-            water_quality,
-            temperature,
+            water_quality: null,
+            temperature : null,
 
-            max_temp:temperature,
-            max_temp_at:date,
+            max_temp: null,
+            max_temp_at:null,
 
-            min_temp:temperature,
-            min_temp_at:date
+            min_temp:null,
+            min_temp_at:null
         }
         sensorState.set(device_id,state);
+    }
+    state.water_quality = water_quality;
+    if(temperature < 0 ||temperature > 70||!Number.isFinite(temperature)){
         return state;
     }
 
     state.temperature = temperature;
-    state.water_quality = water_quality;
 
-    if(temperature > state.max_temp || temperature < 40){
+    if(temperature > state.max_temp || state.max_temp == null){
         state.max_temp = temperature;
         state.max_temp_at = date
     }
 
-    if(temperature < state.min_temp || temperature > 0){
+    if(temperature < state.min_temp || state.min_temp == null){
         state.min_temp = temperature;
         state.min_temp_at = date;
     }
@@ -240,10 +242,10 @@ function resetSensorState(device_id) {
 
     const now = new Date();
 
-    state.max_temp = state.temperature;
+    state.max_temp = null;
     state.max_temp_at = now;
 
-    state.min_temp = state.temperature;
+    state.min_temp = null;
     state.min_temp_at = now;
 
     return state;
@@ -302,6 +304,12 @@ function updateTankcache(tank_info){
         normal_waterquality:tank_info.normal_waterquality,
         warning_waterquality:tank_info.warning_waterquality
     })
+    TempalertState.set(tank_info.device_id, {
+    ...TempalertState.get(tank_info.device_id),
+    temp_state: 'normal',
+    temp_pending_count: 0,
+    temp_time: new Date()
+    });
 }
 
 function setCommand(device_id,data = {}){

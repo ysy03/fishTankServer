@@ -192,6 +192,7 @@ router.get('/alert',authMiddleware,async(req,res)=>{
 
         const twoDaysago = new Date(today);
         twoDaysago.setDate(today.getDate() - 2);
+        twoDaysago.setHours(0 ,0, 0, 0);
         if(!tank){
             return res.status(400).json({message:'저장한 기기를 발견하지 못했습니다.'})
         }
